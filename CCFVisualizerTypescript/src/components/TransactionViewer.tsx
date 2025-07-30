@@ -36,6 +36,7 @@ import {
 } from '@fluentui/react-icons';
 import { useTransactions, useTransactionDetails } from '../hooks/use-ccf-data';
 import { EntryType } from '../types/ccf-types';
+import { ValueViewer } from './ValueViewer';
 
 const useStyles = makeStyles({
   container: {
@@ -137,31 +138,6 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
   const [selectedTransaction, setSelectedTransaction] = useState<number | null>(transactionId || null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   
-  // Helper functions - moved to top to avoid hoisting issues
-  const formatHex = (data: Uint8Array): string => {
-    if (!data || data.length === 0) return '';
-    return Array.from(data)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join(' ');
-  };
-
-  const formatBytes = (data: Uint8Array): string => {
-    if (!data || data.length === 0) return '';
-    try {
-      // Try to decode as UTF-8 text first
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(data);
-      // If it's printable ASCII, show as text
-      if (/^[\x20-\x7E]*$/.test(text)) {
-        return text;
-      }
-    } catch {
-      // Not valid UTF-8, fall back to hex
-    }
-    
-    // Show hex for binary data
-    return formatHex(data);
-  };
-
   const handleTransactionClick = (transactionId: number) => {
     setSelectedTransaction(transactionId);
     setIsDetailsDialogOpen(true);
@@ -199,38 +175,25 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
               </AccordionHeader>
               <AccordionPanel>
                 <div className={styles.accordionContent}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHeaderCell>Key</TableHeaderCell>
-                        <TableHeaderCell>Value</TableHeaderCell>
-                        <TableHeaderCell>Version</TableHeaderCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transactionDetails.writes.map((write, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <TableCellLayout>
-                              <Text className={styles.metaValue}>{write.key}</Text>
-                            </TableCellLayout>
-                          </TableCell>
-                          <TableCell>
-                            <TableCellLayout>
-                              <Text className={styles.hexValue}>
-                                {formatBytes(write.value)}
-                              </Text>
-                            </TableCellLayout>
-                          </TableCell>
-                          <TableCell>
-                            <TableCellLayout>
-                              <Text className={styles.metaValue}>{write.version}</Text>
-                            </TableCellLayout>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  {transactionDetails.writes.map((write, index) => (
+                    <div key={index} style={{ marginBottom: '24px' }}>
+                      <ValueViewer
+                        keyName={write.key}
+                        value={write.value}
+                        tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
+                      />
+                      <Text 
+                        style={{ 
+                          fontSize: '12px', 
+                          color: 'var(--colorNeutralForeground3)',
+                          marginTop: '8px',
+                          fontFamily: 'monospace'
+                        }}
+                      >
+                        Version: {write.version}
+                      </Text>
+                    </div>
+                  ))}
                 </div>
               </AccordionPanel>
             </AccordionItem>
@@ -468,38 +431,25 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
                       </AccordionHeader>
                       <AccordionPanel>
                         <div className={styles.accordionContent}>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHeaderCell>Key</TableHeaderCell>
-                                <TableHeaderCell>Value</TableHeaderCell>
-                                <TableHeaderCell>Version</TableHeaderCell>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {transactionDetails.writes.map((write, index) => (
-                                <TableRow key={index}>
-                                  <TableCell>
-                                    <TableCellLayout>
-                                      <Text className={styles.metaValue}>{write.key}</Text>
-                                    </TableCellLayout>
-                                  </TableCell>
-                                  <TableCell>
-                                    <TableCellLayout>
-                                      <Text className={styles.hexValue}>
-                                        {formatBytes(write.value)}
-                                      </Text>
-                                    </TableCellLayout>
-                                  </TableCell>
-                                  <TableCell>
-                                    <TableCellLayout>
-                                      <Text className={styles.metaValue}>{write.version}</Text>
-                                    </TableCellLayout>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                          {transactionDetails.writes.map((write, index) => (
+                            <div key={index} style={{ marginBottom: '32px' }}>
+                              <ValueViewer
+                                keyName={write.key}
+                                value={write.value}
+                                tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
+                              />
+                              <Text 
+                                style={{ 
+                                  fontSize: '12px', 
+                                  color: 'var(--colorNeutralForeground3)',
+                                  marginTop: '8px',
+                                  fontFamily: 'monospace'
+                                }}
+                              >
+                                Version: {write.version}
+                              </Text>
+                            </div>
+                          ))}
                         </div>
                       </AccordionPanel>
                     </AccordionItem>
