@@ -508,10 +508,10 @@ export class CCFDatabase {
     if (!this.db) throw new Error('Database not initialized');
 
     const result = this.db.exec(`
-      SELECT key_name, value_text, version
+      SELECT key_name, value_text, version, map_name
       FROM kv_writes
       WHERE transaction_id = ?
-      ORDER BY key_name
+      ORDER BY map_name, key_name
     `, [transactionId]);
 
     if (result.length === 0) return [];
@@ -520,6 +520,7 @@ export class CCFDatabase {
       key: row[0] as string,
       value: row[1] ? new TextEncoder().encode(row[1] as string) : new Uint8Array(0),
       version: row[2] as number,
+      mapName: row[3] as string,
     }));
   }
 
@@ -530,10 +531,10 @@ export class CCFDatabase {
     if (!this.db) throw new Error('Database not initialized');
 
     const result = this.db.exec(`
-      SELECT key_name, version
+      SELECT key_name, version, map_name
       FROM kv_deletes
       WHERE transaction_id = ?
-      ORDER BY key_name
+      ORDER BY map_name, key_name
     `, [transactionId]);
 
     if (result.length === 0) return [];
@@ -542,6 +543,7 @@ export class CCFDatabase {
       key: row[0] as string,
       value: new Uint8Array(0),
       version: row[1] as number,
+      mapName: row[2] as string,
     }));
   }
 

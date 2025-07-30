@@ -199,6 +199,7 @@ export class LedgerChunkV2 {
           key,
           value,
           version: mapVersion,
+          mapName,
         });
       }
 
@@ -219,6 +220,7 @@ export class LedgerChunkV2 {
           key,
           value: new Uint8Array(0),
           version: mapVersion,
+          mapName,
         });
       }
     }

@@ -35,7 +35,33 @@ import {
 } from '@fluentui/react-icons';
 import { useTransactions, useTransactionDetails } from '../hooks/use-ccf-data';
 import { EntryType } from '../types/ccf-types';
+import type { LedgerKeyValue } from '../types/ccf-types';
 import { ValueViewer } from './ValueViewer';
+
+// Helper functions for organizing data by table
+const extractTableName = (item: LedgerKeyValue): string => {
+  // Use the mapName property from the database if available
+  if (item.mapName) {
+    return item.mapName;
+  }
+  
+  // Fallback: try to extract from key for backward compatibility
+  if (item.key.includes('/')) {
+    return item.key.split('/')[0];
+  }
+  return item.key;
+};
+
+const groupByTable = (items: LedgerKeyValue[]): Record<string, LedgerKeyValue[]> => {
+  return items.reduce((acc, item) => {
+    const tableName = extractTableName(item);
+    if (!acc[tableName]) {
+      acc[tableName] = [];
+    }
+    acc[tableName].push(item);
+    return acc;
+  }, {} as Record<string, LedgerKeyValue[]>);
+};
 
 const useStyles = makeStyles({
   container: {
@@ -169,12 +195,22 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
           <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value)}>
             {transactionDetails.writes.length > 0 && (
               <Tab value="writes" icon={<Code24Regular />}>
-                Key-Value Writes ({transactionDetails.writes.length})
+                {(() => {
+                  const writesByTable = groupByTable(transactionDetails.writes);
+                  const tableCount = Object.keys(writesByTable).length;
+                  const keyCount = transactionDetails.writes.length;
+                  return `Writes (${tableCount} table${tableCount !== 1 ? 's' : ''}, ${keyCount} key${keyCount !== 1 ? 's' : ''})`;
+                })()}
               </Tab>
             )}
             {transactionDetails.deletes.length > 0 && (
               <Tab value="deletes" icon={<Delete24Regular />}>
-                Key Deletes ({transactionDetails.deletes.length})
+                {(() => {
+                  const deletesByTable = groupByTable(transactionDetails.deletes);
+                  const tableCount = Object.keys(deletesByTable).length;
+                  const keyCount = transactionDetails.deletes.length;
+                  return `Deletes (${tableCount} table${tableCount !== 1 ? 's' : ''}, ${keyCount} key${keyCount !== 1 ? 's' : ''})`;
+                })()}
               </Tab>
             )}
           </TabList>
@@ -182,55 +218,116 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
           {/* Writes Tab Content */}
           {selectedTab === 'writes' && transactionDetails.writes.length > 0 && (
             <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
-              {transactionDetails.writes.map((write, index) => (
-                <div key={index} style={{ marginBottom: '24px' }}>
-                  <ValueViewer
-                    keyName={write.key}
-                    value={write.value}
-                    tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
-                  />
-                  <Text 
-                    style={{ 
-                      fontSize: '12px', 
-                      color: 'var(--colorNeutralForeground3)',
-                      marginTop: '8px',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    Version: {write.version}
-                  </Text>
-                </div>
-              ))}
+              {(() => {
+                const writesByTable = groupByTable(transactionDetails.writes);
+                const tableNames = Object.keys(writesByTable).sort();
+                
+                return tableNames.map(tableName => (
+                  <div key={tableName} style={{ marginBottom: '24px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      marginBottom: '12px',
+                      padding: '8px 12px',
+                      backgroundColor: 'var(--colorNeutralBackground2)',
+                      borderRadius: '4px',
+                      border: '1px solid var(--colorNeutralStroke2)'
+                    }}>
+                      <Database24Regular style={{ color: 'var(--colorNeutralForeground2)' }} />
+                      <Text weight="semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                        {tableName}
+                      </Text>
+                      <Badge size="small" color="brand">
+                        {writesByTable[tableName].length} key{writesByTable[tableName].length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    
+                    {writesByTable[tableName].map((write, index) => (
+                      <div key={index} style={{ marginBottom: '16px', marginLeft: '16px' }}>
+                        <ValueViewer
+                          keyName={write.key.includes('/') ? write.key.split('/').slice(1).join('/') : write.key}
+                          value={write.value}
+                          tableName={write.mapName || tableName}
+                        />
+                        <Text 
+                          style={{ 
+                            fontSize: '12px', 
+                            color: 'var(--colorNeutralForeground3)',
+                            marginTop: '8px',
+                            marginLeft: '8px',
+                            fontFamily: 'monospace'
+                          }}
+                        >
+                          Version: {write.version}
+                        </Text>
+                      </div>
+                    ))}
+                  </div>
+                ));
+              })()}
             </div>
           )}
 
           {/* Deletes Tab Content */}
           {selectedTab === 'deletes' && transactionDetails.deletes.length > 0 && (
             <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHeaderCell>Key</TableHeaderCell>
-                    <TableHeaderCell>Version</TableHeaderCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactionDetails.deletes.map((del, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <TableCellLayout>
-                          <Text className={styles.metaValue}>{del.key}</Text>
-                        </TableCellLayout>
-                      </TableCell>
-                      <TableCell>
-                        <TableCellLayout>
-                          <Text className={styles.metaValue}>{del.version}</Text>
-                        </TableCellLayout>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {(() => {
+                const deletesByTable = groupByTable(transactionDetails.deletes);
+                const tableNames = Object.keys(deletesByTable).sort();
+                
+                return tableNames.map(tableName => (
+                  <div key={tableName} style={{ marginBottom: '24px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      marginBottom: '12px',
+                      padding: '8px 12px',
+                      backgroundColor: 'var(--colorNeutralBackground2)',
+                      borderRadius: '4px',
+                      border: '1px solid var(--colorNeutralStroke2)'
+                    }}>
+                      <Database24Regular style={{ color: 'var(--colorNeutralForeground2)' }} />
+                      <Text weight="semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                        {tableName}
+                      </Text>
+                      <Badge size="small" color="danger">
+                        {deletesByTable[tableName].length} deletion{deletesByTable[tableName].length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    
+                    <div style={{ marginLeft: '16px' }}>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHeaderCell>Key</TableHeaderCell>
+                            <TableHeaderCell>Version</TableHeaderCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {deletesByTable[tableName].map((del, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <TableCellLayout>
+                                  <Text className={styles.metaValue}>
+                                    {del.key.includes('/') ? del.key.split('/').slice(1).join('/') : del.key}
+                                  </Text>
+                                </TableCellLayout>
+                              </TableCell>
+                              <TableCell>
+                                <TableCellLayout>
+                                  <Text className={styles.metaValue}>{del.version}</Text>
+                                </TableCellLayout>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           )}
 
@@ -420,12 +517,22 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
                   <TabList selectedValue={dialogSelectedTab} onTabSelect={(_, data) => setDialogSelectedTab(data.value)}>
                     {transactionDetails.writes.length > 0 && (
                       <Tab value="writes" icon={<Code24Regular />}>
-                        Key-Value Writes ({transactionDetails.writes.length})
+                        {(() => {
+                          const writesByTable = groupByTable(transactionDetails.writes);
+                          const tableCount = Object.keys(writesByTable).length;
+                          const keyCount = transactionDetails.writes.length;
+                          return `Writes (${tableCount} table${tableCount !== 1 ? 's' : ''}, ${keyCount} key${keyCount !== 1 ? 's' : ''})`;
+                        })()}
                       </Tab>
                     )}
                     {transactionDetails.deletes.length > 0 && (
                       <Tab value="deletes" icon={<Delete24Regular />}>
-                        Key Deletes ({transactionDetails.deletes.length})
+                        {(() => {
+                          const deletesByTable = groupByTable(transactionDetails.deletes);
+                          const tableCount = Object.keys(deletesByTable).length;
+                          const keyCount = transactionDetails.deletes.length;
+                          return `Deletes (${tableCount} table${tableCount !== 1 ? 's' : ''}, ${keyCount} key${keyCount !== 1 ? 's' : ''})`;
+                        })()}
                       </Tab>
                     )}
                   </TabList>
@@ -433,55 +540,116 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
                   {/* Writes Tab Content */}
                   {dialogSelectedTab === 'writes' && transactionDetails.writes.length > 0 && (
                     <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
-                      {transactionDetails.writes.map((write, index) => (
-                        <div key={index} style={{ marginBottom: '32px' }}>
-                          <ValueViewer
-                            keyName={write.key}
-                            value={write.value}
-                            tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
-                          />
-                          <Text 
-                            style={{ 
-                              fontSize: '12px', 
-                              color: 'var(--colorNeutralForeground3)',
-                              marginTop: '8px',
-                              fontFamily: 'monospace'
-                            }}
-                          >
-                            Version: {write.version}
-                          </Text>
-                        </div>
-                      ))}
+                      {(() => {
+                        const writesByTable = groupByTable(transactionDetails.writes);
+                        const tableNames = Object.keys(writesByTable).sort();
+                        
+                        return tableNames.map(tableName => (
+                          <div key={tableName} style={{ marginBottom: '24px' }}>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px', 
+                              marginBottom: '12px',
+                              padding: '8px 12px',
+                              backgroundColor: 'var(--colorNeutralBackground2)',
+                              borderRadius: '4px',
+                              border: '1px solid var(--colorNeutralStroke2)'
+                            }}>
+                              <Database24Regular style={{ color: 'var(--colorNeutralForeground2)' }} />
+                              <Text weight="semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                                {tableName}
+                              </Text>
+                              <Badge size="small" color="brand">
+                                {writesByTable[tableName].length} key{writesByTable[tableName].length !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            
+                            {writesByTable[tableName].map((write, index) => (
+                              <div key={index} style={{ marginBottom: '16px', marginLeft: '16px' }}>
+                                <ValueViewer
+                                  keyName={write.key.includes('/') ? write.key.split('/').slice(1).join('/') : write.key}
+                                  value={write.value}
+                                  tableName={write.mapName || tableName}
+                                />
+                                <Text 
+                                  style={{ 
+                                    fontSize: '12px', 
+                                    color: 'var(--colorNeutralForeground3)',
+                                    marginTop: '8px',
+                                    marginLeft: '8px',
+                                    fontFamily: 'monospace'
+                                  }}
+                                >
+                                  Version: {write.version}
+                                </Text>
+                              </div>
+                            ))}
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
 
                   {/* Deletes Tab Content */}
                   {dialogSelectedTab === 'deletes' && transactionDetails.deletes.length > 0 && (
                     <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHeaderCell>Key</TableHeaderCell>
-                            <TableHeaderCell>Version</TableHeaderCell>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {transactionDetails.deletes.map((del, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <TableCellLayout>
-                                  <Text className={styles.metaValue}>{del.key}</Text>
-                                </TableCellLayout>
-                              </TableCell>
-                              <TableCell>
-                                <TableCellLayout>
-                                  <Text className={styles.metaValue}>{del.version}</Text>
-                                </TableCellLayout>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      {(() => {
+                        const deletesByTable = groupByTable(transactionDetails.deletes);
+                        const tableNames = Object.keys(deletesByTable).sort();
+                        
+                        return tableNames.map(tableName => (
+                          <div key={tableName} style={{ marginBottom: '24px' }}>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px', 
+                              marginBottom: '12px',
+                              padding: '8px 12px',
+                              backgroundColor: 'var(--colorNeutralBackground2)',
+                              borderRadius: '4px',
+                              border: '1px solid var(--colorNeutralStroke2)'
+                            }}>
+                              <Database24Regular style={{ color: 'var(--colorNeutralForeground2)' }} />
+                              <Text weight="semibold" style={{ color: 'var(--colorNeutralForeground1)' }}>
+                                {tableName}
+                              </Text>
+                              <Badge size="small" color="danger">
+                                {deletesByTable[tableName].length} deletion{deletesByTable[tableName].length !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            
+                            <div style={{ marginLeft: '16px' }}>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHeaderCell>Key</TableHeaderCell>
+                                    <TableHeaderCell>Version</TableHeaderCell>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {deletesByTable[tableName].map((del, index) => (
+                                    <TableRow key={index}>
+                                      <TableCell>
+                                        <TableCellLayout>
+                                          <Text className={styles.metaValue}>
+                                            {del.key.includes('/') ? del.key.split('/').slice(1).join('/') : del.key}
+                                          </Text>
+                                        </TableCellLayout>
+                                      </TableCell>
+                                      <TableCell>
+                                        <TableCellLayout>
+                                          <Text className={styles.metaValue}>{del.version}</Text>
+                                        </TableCellLayout>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
 
