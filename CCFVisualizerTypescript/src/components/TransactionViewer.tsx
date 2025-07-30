@@ -20,11 +20,10 @@ import {
   DialogContent,
   DialogBody,
   DialogActions,
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
+import type { TabValue } from '@fluentui/react-components';
 import {
   ChevronLeft24Regular,
   ChevronRight24Regular,
@@ -137,6 +136,8 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedTransaction, setSelectedTransaction] = useState<number | null>(transactionId || null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<TabValue>('writes');
+  const [dialogSelectedTab, setDialogSelectedTab] = useState<TabValue>('writes');
   
   const handleTransactionClick = (transactionId: number) => {
     setSelectedTransaction(transactionId);
@@ -164,78 +165,73 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
         </div>
         
         {/* Transaction Details */}
-        <Accordion multiple collapsible>
-          {/* Writes Section */}
-          {transactionDetails.writes.length > 0 && (
-            <AccordionItem value="writes">
-              <AccordionHeader icon={<Code24Regular />}>
-                <Text weight="semibold">
-                  Key-Value Writes ({transactionDetails.writes.length})
-                </Text>
-              </AccordionHeader>
-              <AccordionPanel>
-                <div className={styles.accordionContent}>
-                  {transactionDetails.writes.map((write, index) => (
-                    <div key={index} style={{ marginBottom: '24px' }}>
-                      <ValueViewer
-                        keyName={write.key}
-                        value={write.value}
-                        tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
-                      />
-                      <Text 
-                        style={{ 
-                          fontSize: '12px', 
-                          color: 'var(--colorNeutralForeground3)',
-                          marginTop: '8px',
-                          fontFamily: 'monospace'
-                        }}
-                      >
-                        Version: {write.version}
-                      </Text>
-                    </div>
-                  ))}
+        <div>
+          <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value)}>
+            {transactionDetails.writes.length > 0 && (
+              <Tab value="writes" icon={<Code24Regular />}>
+                Key-Value Writes ({transactionDetails.writes.length})
+              </Tab>
+            )}
+            {transactionDetails.deletes.length > 0 && (
+              <Tab value="deletes" icon={<Delete24Regular />}>
+                Key Deletes ({transactionDetails.deletes.length})
+              </Tab>
+            )}
+          </TabList>
+
+          {/* Writes Tab Content */}
+          {selectedTab === 'writes' && transactionDetails.writes.length > 0 && (
+            <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
+              {transactionDetails.writes.map((write, index) => (
+                <div key={index} style={{ marginBottom: '24px' }}>
+                  <ValueViewer
+                    keyName={write.key}
+                    value={write.value}
+                    tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
+                  />
+                  <Text 
+                    style={{ 
+                      fontSize: '12px', 
+                      color: 'var(--colorNeutralForeground3)',
+                      marginTop: '8px',
+                      fontFamily: 'monospace'
+                    }}
+                  >
+                    Version: {write.version}
+                  </Text>
                 </div>
-              </AccordionPanel>
-            </AccordionItem>
+              ))}
+            </div>
           )}
 
-          {/* Deletes Section */}
-          {transactionDetails.deletes.length > 0 && (
-            <AccordionItem value="deletes">
-              <AccordionHeader icon={<Delete24Regular />}>
-                <Text weight="semibold">
-                  Key Deletes ({transactionDetails.deletes.length})
-                </Text>
-              </AccordionHeader>
-              <AccordionPanel>
-                <div className={styles.accordionContent}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHeaderCell>Key</TableHeaderCell>
-                        <TableHeaderCell>Version</TableHeaderCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transactionDetails.deletes.map((del, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <TableCellLayout>
-                              <Text className={styles.metaValue}>{del.key}</Text>
-                            </TableCellLayout>
-                          </TableCell>
-                          <TableCell>
-                            <TableCellLayout>
-                              <Text className={styles.metaValue}>{del.version}</Text>
-                            </TableCellLayout>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </AccordionPanel>
-            </AccordionItem>
+          {/* Deletes Tab Content */}
+          {selectedTab === 'deletes' && transactionDetails.deletes.length > 0 && (
+            <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeaderCell>Key</TableHeaderCell>
+                    <TableHeaderCell>Version</TableHeaderCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactionDetails.deletes.map((del, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <TableCellLayout>
+                          <Text className={styles.metaValue}>{del.key}</Text>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell>
+                        <TableCellLayout>
+                          <Text className={styles.metaValue}>{del.version}</Text>
+                        </TableCellLayout>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Empty State */}
@@ -244,7 +240,7 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
               <Text>No key-value operations found in this transaction.</Text>
             </div>
           )}
-        </Accordion>
+        </div>
       </div>
     );
   }
@@ -420,78 +416,73 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
           <DialogContent className={styles.dialogContent}>
             <DialogBody>
               {selectedTransaction && transactionDetails ? (
-                <Accordion multiple collapsible>
-                  {/* Writes Section */}
-                  {transactionDetails.writes.length > 0 && (
-                    <AccordionItem value="writes">
-                      <AccordionHeader icon={<Code24Regular />}>
-                        <Text weight="semibold">
-                          Key-Value Writes ({transactionDetails.writes.length})
-                        </Text>
-                      </AccordionHeader>
-                      <AccordionPanel>
-                        <div className={styles.accordionContent}>
-                          {transactionDetails.writes.map((write, index) => (
-                            <div key={index} style={{ marginBottom: '32px' }}>
-                              <ValueViewer
-                                keyName={write.key}
-                                value={write.value}
-                                tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
-                              />
-                              <Text 
-                                style={{ 
-                                  fontSize: '12px', 
-                                  color: 'var(--colorNeutralForeground3)',
-                                  marginTop: '8px',
-                                  fontFamily: 'monospace'
-                                }}
-                              >
-                                Version: {write.version}
-                              </Text>
-                            </div>
-                          ))}
+                <div>
+                  <TabList selectedValue={dialogSelectedTab} onTabSelect={(_, data) => setDialogSelectedTab(data.value)}>
+                    {transactionDetails.writes.length > 0 && (
+                      <Tab value="writes" icon={<Code24Regular />}>
+                        Key-Value Writes ({transactionDetails.writes.length})
+                      </Tab>
+                    )}
+                    {transactionDetails.deletes.length > 0 && (
+                      <Tab value="deletes" icon={<Delete24Regular />}>
+                        Key Deletes ({transactionDetails.deletes.length})
+                      </Tab>
+                    )}
+                  </TabList>
+
+                  {/* Writes Tab Content */}
+                  {dialogSelectedTab === 'writes' && transactionDetails.writes.length > 0 && (
+                    <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
+                      {transactionDetails.writes.map((write, index) => (
+                        <div key={index} style={{ marginBottom: '32px' }}>
+                          <ValueViewer
+                            keyName={write.key}
+                            value={write.value}
+                            tableName={write.key.includes(':') ? write.key.split('/')[0] : undefined}
+                          />
+                          <Text 
+                            style={{ 
+                              fontSize: '12px', 
+                              color: 'var(--colorNeutralForeground3)',
+                              marginTop: '8px',
+                              fontFamily: 'monospace'
+                            }}
+                          >
+                            Version: {write.version}
+                          </Text>
                         </div>
-                      </AccordionPanel>
-                    </AccordionItem>
+                      ))}
+                    </div>
                   )}
 
-                  {/* Deletes Section */}
-                  {transactionDetails.deletes.length > 0 && (
-                    <AccordionItem value="deletes">
-                      <AccordionHeader icon={<Delete24Regular />}>
-                        <Text weight="semibold">
-                          Key Deletes ({transactionDetails.deletes.length})
-                        </Text>
-                      </AccordionHeader>
-                      <AccordionPanel>
-                        <div className={styles.accordionContent}>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHeaderCell>Key</TableHeaderCell>
-                                <TableHeaderCell>Version</TableHeaderCell>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {transactionDetails.deletes.map((del, index) => (
-                                <TableRow key={index}>
-                                  <TableCell>
-                                    <TableCellLayout>
-                                      <Text className={styles.metaValue}>{del.key}</Text>
-                                    </TableCellLayout>
-                                  </TableCell>
-                                  <TableCell>
-                                    <TableCellLayout>
-                                      <Text className={styles.metaValue}>{del.version}</Text>
-                                    </TableCellLayout>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </AccordionPanel>
-                    </AccordionItem>
+                  {/* Deletes Tab Content */}
+                  {dialogSelectedTab === 'deletes' && transactionDetails.deletes.length > 0 && (
+                    <div className={styles.accordionContent} style={{ marginTop: '16px' }}>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHeaderCell>Key</TableHeaderCell>
+                            <TableHeaderCell>Version</TableHeaderCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {transactionDetails.deletes.map((del, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <TableCellLayout>
+                                  <Text className={styles.metaValue}>{del.key}</Text>
+                                </TableCellLayout>
+                              </TableCell>
+                              <TableCell>
+                                <TableCellLayout>
+                                  <Text className={styles.metaValue}>{del.version}</Text>
+                                </TableCellLayout>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
 
                   {/* No Data Message */}
@@ -501,7 +492,7 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
                       <Text>This transaction contains no key-value operations.</Text>
                     </div>
                   )}
-                </Accordion>
+                </div>
               ) : (
                 <div className={styles.loadingState}>
                   <Spinner size="medium" label="Loading transaction details..." />

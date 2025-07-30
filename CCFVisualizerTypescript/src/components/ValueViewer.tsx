@@ -98,6 +98,36 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
   const [contentType, setContentType] = useState<ContentType>('auto');
   const [displayContent, setDisplayContent] = useState<string>('');
   const [editorLanguage, setEditorLanguage] = useState<string>('plaintext');
+  
+  // Detect current theme - check if dark mode is active
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('ccf-visualizer-theme');
+    return savedTheme === 'dark';
+  });
+
+  // Listen for theme changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedTheme = localStorage.getItem('ccf-visualizer-theme');
+      setIsDarkTheme(savedTheme === 'dark');
+    };
+
+    // Listen for storage changes (when theme is changed in another tab/component)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check for changes in the same tab
+    const checkTheme = () => {
+      const savedTheme = localStorage.getItem('ccf-visualizer-theme');
+      setIsDarkTheme(savedTheme === 'dark');
+    };
+    
+    const intervalId = setInterval(checkTheme, 1000); // Check every second
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const detectContentType = (data: Uint8Array, tableName?: string): ContentType => {
     // First check table mapping
@@ -171,7 +201,15 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
     switch (type) {
       case 'javascript': {
         try {
-          const text = new TextDecoder('utf-8').decode(data);
+          let text = new TextDecoder('utf-8').decode(data);
+          
+          // Remove surrounding double quotes if the entire content is wrapped in quotes
+          if (text.startsWith('"') && text.endsWith('"') && text.length > 1) {
+            text = text.slice(1, -1);
+          }
+          
+          // Replace escaped newlines with actual newlines for better formatting
+          text = text.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
           return { content: text, language: 'javascript' };
         } catch {
           return { content: formatHex(data), language: 'plaintext' };
@@ -180,7 +218,15 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
       
       case 'json': {
         try {
-          const text = new TextDecoder('utf-8').decode(data);
+          let text = new TextDecoder('utf-8').decode(data);
+          
+          // Remove surrounding double quotes if the entire content is wrapped in quotes
+          if (text.startsWith('"') && text.endsWith('"') && text.length > 1) {
+            text = text.slice(1, -1);
+            // Unescape any escaped quotes within the JSON string
+            text = text.replace(/\\"/g, '"');
+          }
+          
           const parsed = JSON.parse(text);
           return { content: JSON.stringify(parsed, null, 2), language: 'json' };
         } catch {
@@ -350,7 +396,7 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
             fontSize: 12,
             fontFamily: 'Consolas, "Courier New", monospace',
           }}
-          theme="vs-dark"
+          theme={isDarkTheme ? "vs-dark" : "vs"}
         />
       </div>
     </div>
