@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
   Input,
-  Label,
+  Field,
   Textarea,
-  Select,
   Card,
   CardHeader,
   CardFooter,
@@ -25,10 +24,12 @@ import {
   Person24Regular,
 } from '@fluentui/react-icons';
 import { CCFDatabase } from '../database/ccf-database';
+import defaultSystemPrompt from '../assets/defaultSystemPrompt.md?raw';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
+  responseId?: string;
   content: string;
   sqlQuery?: string;
   sqlResult?: unknown[];
@@ -36,9 +37,9 @@ interface ChatMessage {
   error?: string;
 }
 
-interface OpenAIConfig {
-  apiKey: string;
-  model: string;
+interface ChatConfig {
+  baseUrl: string;
+  systemPrompt: string;
 }
 
 interface AIChatProps {
@@ -58,6 +59,7 @@ const useStyles = makeStyles({
     flexShrink: 0,
     ...shorthands.padding('16px'),
     backgroundColor: tokens.colorNeutralBackground2,
+    overflowY: 'auto',
   },
   configHeader: {
     display: 'flex',
@@ -76,6 +78,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     ...shorthands.padding('16px'),
     minWidth: 0,
+    overflowY: 'auto',
   },
   chatCard: {
     flex: 1,
@@ -226,9 +229,9 @@ const useStyles = makeStyles({
 
 export const AIChat: React.FC<AIChatProps> = ({ database }) => {
   const styles = useStyles();
-  const [config, setConfig] = useState<OpenAIConfig>({
-    apiKey: localStorage.getItem('openai_api_key') || '',
-    model: localStorage.getItem('openai_model') || 'gpt-4o-mini',
+  const [config, setConfig] = useState<ChatConfig>({
+    baseUrl: localStorage.getItem('chat_base_url') || '',
+    systemPrompt: localStorage.getItem('chat_system_prompt') || '',
   });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -243,40 +246,16 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
 
   // Save config to localStorage when it changes
   useEffect(() => {
-    if (config.apiKey) {
-      localStorage.setItem('openai_api_key', config.apiKey);
+    localStorage.setItem('chat_base_url', config.baseUrl);
+    if (config.systemPrompt) {
+      localStorage.setItem('chat_system_prompt', config.systemPrompt);
+    } else {
+      localStorage.setItem('chat_system_prompt', defaultSystemPrompt);
     }
-    localStorage.setItem('openai_model', config.model);
   }, [config]);
 
   const getSystemPrompt = () => {
-    return `You are an AI assistant specialized in analyzing CCF (Confidential Consortium Framework) ledger data. You have access to a SQLite database with the following schema:
-
-TABLES:
-- ledger_files: Contains uploaded ledger files (id, filename, file_size, created_at, updated_at)
-- transactions: Contains parsed transactions (id, file_id, version, flags, size, entry_type, tx_version, max_conflict_version, tx_digest, created_at)
-- kv_writes: Contains key-value write operations (id, transaction_id, map_name, key_name, value_text, version, created_at)
-- kv_deletes: Contains key-value delete operations (id, transaction_id, map_name, key_name, version, created_at)
-
-IMPORTANT GUIDELINES:
-1. When answering questions about the data, you MUST write SQL queries to get accurate information
-2. Always use SELECT queries only - never INSERT, UPDATE, DELETE, or DDL statements
-3. Use appropriate JOINs to get comprehensive information
-4. Format SQL queries clearly and explain what they do
-5. If you need to execute a SQL query, include it in your response with the format: \`\`\`sql\n[query]\n\`\`\`
-6. Explain your findings in a user-friendly way
-7. The map_name field typically contains CCF table names like 'public:ccf.gov.nodes', 'public:ccf.internal.consensus', etc.
-8. The value_text field contains UTF-8 decoded values from the ledger
-9. CCF transactions can contain multiple key-value operations
-
-You can answer questions about:
-- Transaction counts and statistics
-- Key-value operations and their content
-- File information and ledger structure
-- Data analysis and patterns
-- Specific searches within the ledger data
-
-Always be helpful and provide detailed explanations of your SQL queries and results.`;
+      return config.systemPrompt || defaultSystemPrompt;
   };
 
   const executeQuery = async (sqlQuery: string): Promise<unknown[]> => {
@@ -288,27 +267,30 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
     }
   };
 
-  const callOpenAI = async (messages: ChatMessage[], newMessage: string): Promise<string> => {
-    if (!config.apiKey) {
-      throw new Error('OpenAI API key is required');
+  const callOpenAIResponseAPI = async (messages: ChatMessage[], newMessage: string): Promise<{ id: string; text: string }> => {
+    if (!config.baseUrl) {
+      throw new Error('Base URL is required to send the request');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    let input = '';
+    // collect prior conversations as history for this question
+    messages.forEach(m => {
+      input += `${m.role} said: ${m.content}\n`;
+    });
+
+    const previousResponseId = messages.length > 0 ? messages[messages.length - 1].responseId : null;
+
+    input += `User asks: ${newMessage}\n`;
+
+    const response = await fetch(config.baseUrl + '/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        model: config.model,
-        messages: [
-          { role: 'system', content: getSystemPrompt() },
-          ...messages.map(m => ({
-            role: m.role,
-            content: m.content + (m.sqlResult ? `\n\nSQL Query Result: ${JSON.stringify(m.sqlResult, null, 2)}` : ''),
-          })),
-          { role: 'user', content: newMessage },
-        ],
+        input: input,
+        instructions: getSystemPrompt(),
+        previous_response_id: previousResponseId,
         temperature: 0.1,
         max_tokens: 2000,
       }),
@@ -320,7 +302,26 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || 'No response received';
+    let concatenatedResponse = "";
+    if (data.output && data.output.length > 0) {
+      for (const output of data.output) {
+        if (output.type === 'message') {
+          for (const messageContent of output.content) {
+            if (messageContent.type === 'output_text') {
+              concatenatedResponse += `${messageContent.text}\n`;
+            } else {
+              concatenatedResponse += `type: ${messageContent.type}\n`;
+            }
+          }
+        } else {
+          concatenatedResponse += `type: ${output.type}\n`;
+        }
+      }
+    }
+    return {
+      id: data.id || '',
+      text: concatenatedResponse || 'No response received'
+    };
   };
 
   const extractSqlQuery = (content: string): string | null => {
@@ -345,10 +346,10 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
 
     try {
       // Get AI response
-      const aiResponse = await callOpenAI(messages, userMessage.content);
+      const aiResponse = await callOpenAIResponseAPI(messages, userMessage.content);
       
       // Check if the response contains a SQL query
-      const sqlQuery = extractSqlQuery(aiResponse);
+      const sqlQuery = extractSqlQuery(aiResponse.text);
       let sqlResult: unknown[] | undefined;
       let executionError: string | undefined;
 
@@ -361,9 +362,10 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
       }
 
       const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: aiResponse.id || (Date.now() + 1).toString(),
+        responseId: aiResponse.id,
         role: 'assistant',
-        content: aiResponse,
+        content: aiResponse.text,
         sqlQuery: sqlQuery || undefined,
         sqlResult,
         error: executionError,
@@ -420,36 +422,13 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
             }
           />
           <div className={styles.configContent}>
-            <div>
-              <Label htmlFor="api-key">OpenAI API Key</Label>
+            <Field label="Base URL">
               <Input
-                id="api-key"
-                type="password"
-                placeholder="sk-..."
-                value={config.apiKey}
-                onChange={(_, data) => setConfig(prev => ({ ...prev, apiKey: data.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="model">Model</Label>
-              <Select
-                id="model"
-                value={config.model}
-                onChange={(_, data) => setConfig(prev => ({ ...prev, model: data.value }))}
-              >
-                {[
-                  { value: 'gpt-4o', label: 'GPT-4o' },
-                  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-                  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-                  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-                ].map(model => (
-                  <option key={model.value} value={model.value}>
-                    {model.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
+                type="url"
+                placeholder="https://xyz.cognitiveservices.azure.com/"
+                value={config.baseUrl}
+                onChange={(_, data) => setConfig(prev => ({ ...prev, baseUrl: data.value }))} />
+            </Field>
 
             <Divider />
 
@@ -474,7 +453,7 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
             header={
               <div className={styles.chatHeader}>
                 <Bot24Regular />
-                <Text weight="semibold">CCF Ledger AI Assistant</Text>
+                <Text weight="semibold">Sage Assistant</Text>
                 <Badge appearance="outline" size="small">
                   <Database24Regular />
                   <span className={styles.badgeText}>SQL Enabled</span>
@@ -593,7 +572,7 @@ Always be helpful and provide detailed explanations of your SQL queries and resu
                 appearance="primary"
                 icon={<Send24Regular />}
                 onClick={handleSendMessage}
-                disabled={!currentMessage.trim() || isLoading || !config.apiKey}
+                disabled={!currentMessage.trim() || isLoading || !config.baseUrl}
               />
             </div>
           </CardFooter>
