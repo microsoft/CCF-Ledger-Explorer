@@ -75,11 +75,6 @@ export class LedgerChunkV2 {
         publicDomain.claimsDigest
       );
 
-      const hexString = Array.from(txDigest)
-        .map(byte => byte.toString(16).padStart(2, '0')) // Convert to hex and pad with 0 if needed
-        .join(''); // Join all hex values into a single string
-        console.log(gcmHeader.seqNo, hexString);
-
       return {
         header,
         gcmHeader,
@@ -131,7 +126,7 @@ export class LedgerChunkV2 {
     // Read claims digest if present
     const claimsDigest = entryTypeHelpers.hasClaims(entryType)
       ? new Uint8Array(view.buffer, view.byteOffset + offset, LEDGER_CONSTANTS.SHA256_HASH_SIZE)
-      : new Uint8Array(LEDGER_CONSTANTS.SHA256_HASH_SIZE);
+      : new Uint8Array(0); // Empty array, not array of zeros
     if (entryTypeHelpers.hasClaims(entryType)) {
       offset += LEDGER_CONSTANTS.SHA256_HASH_SIZE;
     }
@@ -139,7 +134,7 @@ export class LedgerChunkV2 {
     // Read commit evidence digest if present
     const commitEvidenceDigest = entryTypeHelpers.hasCommitEvidence(entryType)
       ? new Uint8Array(view.buffer, view.byteOffset + offset, LEDGER_CONSTANTS.SHA256_HASH_SIZE)
-      : new Uint8Array(LEDGER_CONSTANTS.SHA256_HASH_SIZE);
+      : new Uint8Array(0); // Empty array, not array of zeros
     if (entryTypeHelpers.hasCommitEvidence(entryType)) {
       offset += LEDGER_CONSTANTS.SHA256_HASH_SIZE;
     }
@@ -153,20 +148,18 @@ export class LedgerChunkV2 {
 
     const writes: LedgerKeyValue[] = [];
     const deletes: LedgerKeyValue[] = [];
-    let mapName = '';
-    let mapVersion = 0;
 
     // Parse map entries
     while (offset < publicDomainSize) {
       const mapNameSize = Number(view.getBigUint64(offset, true));
       offset += 8;
 
-      mapName = new TextDecoder().decode(
+      const mapName = new TextDecoder().decode(
         new Uint8Array(view.buffer, view.byteOffset + offset, mapNameSize)
       );
       offset += mapNameSize;
 
-      mapVersion = Number(view.getBigUint64(offset, true));
+      const mapVersion = Number(view.getBigUint64(offset, true));
       offset += 8;
 
       const readCount = Number(view.getBigUint64(offset, true));
@@ -199,6 +192,7 @@ export class LedgerChunkV2 {
           key,
           value,
           version: mapVersion,
+          mapName,
         });
       }
 
@@ -219,6 +213,7 @@ export class LedgerChunkV2 {
           key,
           value: new Uint8Array(0),
           version: mapVersion,
+          mapName,
         });
       }
     }
@@ -231,8 +226,8 @@ export class LedgerChunkV2 {
       maxConflictVersion,
       writes,
       deletes,
-      mapName,
-      mapVersion,
+      mapName: '', // Deprecated: mapName is now stored in individual writes/deletes
+      mapVersion: 0, // Deprecated: mapVersion is now stored in individual writes/deletes
     };
   }
 
@@ -256,15 +251,16 @@ export class LedgerChunkV2 {
       const writeSetDigest = new Uint8Array(writeSetDigestBuffer);
 
       // Second hash: writeSetDigest + commitEvidenceDigest + claimsDigest
+      // Only include non-empty digests (matching C# IsEmpty check)
       let finalDataSize = writeSetDigest.length;
       
-      // Add commitEvidenceDigest size if not empty
-      if (commitEvidenceDigest.length > 0 && !this.isEmptyHash(commitEvidenceDigest)) {
+      // Add commitEvidenceDigest size if not empty (length > 0)
+      if (commitEvidenceDigest.length > 0) {
         finalDataSize += commitEvidenceDigest.length;
       }
       
-      // Add claimsDigest size if not empty
-      if (claimsDigest.length > 0 && !this.isEmptyHash(claimsDigest)) {
+      // Add claimsDigest size if not empty (length > 0)
+      if (claimsDigest.length > 0) {
         finalDataSize += claimsDigest.length;
       }
 
@@ -275,14 +271,14 @@ export class LedgerChunkV2 {
       finalData.set(writeSetDigest, offset);
       offset += writeSetDigest.length;
 
-      // Append commitEvidenceDigest if not empty
-      if (commitEvidenceDigest.length > 0 && !this.isEmptyHash(commitEvidenceDigest)) {
+      // Append commitEvidenceDigest if not empty (matching C# !IsEmpty check)
+      if (commitEvidenceDigest.length > 0) {
         finalData.set(commitEvidenceDigest, offset);
         offset += commitEvidenceDigest.length;
       }
 
-      // Append claimsDigest if not empty
-      if (claimsDigest.length > 0 && !this.isEmptyHash(claimsDigest)) {
+      // Append claimsDigest if not empty (matching C# !IsEmpty check)
+      if (claimsDigest.length > 0) {
         finalData.set(claimsDigest, offset);
       }
 
@@ -293,13 +289,6 @@ export class LedgerChunkV2 {
       // Fallback to empty hash if calculation fails
       return new Uint8Array(LEDGER_CONSTANTS.SHA256_HASH_SIZE);
     }
-  }
-
-  /**
-   * Helper method to check if a hash is empty (all zeros)
-   */
-  private isEmptyHash(hash: Uint8Array): boolean {
-    return hash.every(byte => byte === 0);
   }
 
   /**

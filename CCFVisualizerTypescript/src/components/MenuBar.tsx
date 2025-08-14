@@ -25,6 +25,8 @@ import {
   DatabaseRegular,
   NumberSymbolRegular,
   Bot24Regular,
+  ShieldCheckmarkRegular,
+  DocumentSearch24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
 import { 
@@ -33,6 +35,7 @@ import {
   useDropDatabase,
 } from '../hooks/use-ccf-data';
 import { AddFilesWizard } from './AddFilesWizard';
+import { StorageVisualizer } from './StorageVisualizer';
 
 const useStyles = makeStyles({
   header: {
@@ -112,6 +115,12 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
       return 'stats';
     } else if (location.pathname.startsWith('/ai')) {
       return 'ai';
+    } else if (location.pathname.startsWith('/verification')) {
+      return 'verification';
+    } else if (location.pathname.startsWith('/write-receipt')) {
+      return 'write-receipt';
+    } else if (location.pathname.startsWith('/config')) {
+      return 'config';
     }
     return 'files';
   };
@@ -125,6 +134,10 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
       navigate('/stats');
     } else if (tabValue === 'ai') {
       navigate('/ai');
+    } else if (tabValue === 'verification') {
+      navigate('/verification');
+    } else if (tabValue === 'write-receipt') {
+      navigate('/write-receipt');
     } else if (tabValue === 'config') {
       navigate('/config');
     }
@@ -156,6 +169,12 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
             </Tab>
             <Tab value="stats" icon={<NumberSymbolRegular />}>
               Stats
+            </Tab>
+            <Tab value="verification" icon={<ShieldCheckmarkRegular />}>
+              Ledger Verification
+            </Tab>
+            <Tab value="write-receipt" icon={<DocumentSearch24Regular />}>
+              Receipt Verification
             </Tab>
             <Tab value="ai" icon={<Bot24Regular />}>
               AI Assistant
@@ -216,6 +235,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
                       <li>{stats.deleteCount} delete operation{stats.deleteCount !== 1 ? 's' : ''}</li>
                     </ul>
                     <Body1>This action cannot be undone.</Body1>
+                    
+                    {/* Storage Status */}
+                    <div style={{ marginTop: '16px' }}>
+                      <StorageVisualizer 
+                        title="Storage Impact" 
+                        showDetails={false}
+                        showRecommendations={false}
+                      />
+                    </div>
                   </DialogBody>
                   <DialogActions>
                     <DialogTrigger disableButtonEnhancement>
@@ -261,6 +289,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
                     This is more thorough than "Clear All Data" and will completely reset the database structure.
                     This action cannot be undone.
                   </Body1>
+                  
+                  {/* Storage Status */}
+                  <div style={{ marginTop: '16px' }}>
+                    <StorageVisualizer 
+                      title="Storage Recovery" 
+                      showDetails={false}
+                      showRecommendations={false}
+                    />
+                  </div>
                 </DialogBody>
                 <DialogActions>
                   <DialogTrigger disableButtonEnhancement>

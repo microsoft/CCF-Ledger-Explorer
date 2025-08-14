@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CCFDatabase } from '../database/ccf-database';
 import { LedgerChunkV2 } from '../parser/ledger-chunk';
 import type { Transaction } from '../types/ccf-types';
+import { getStorageQuota, checkStorageCapacity, estimateDatabaseSize } from '../utils/storage-quota';
 
 // Global database instance (singleton pattern)
 let dbInstance: CCFDatabase | null = null;
@@ -31,6 +32,7 @@ export const queryKeys = {
   ccfTables: ['ccfTables'] as const,
   tableKeyValues: (mapName: string, limit: number, offset: number, searchQuery?: string) => ['tableKeyValues', mapName, limit, offset, searchQuery] as const,
   tableLatestState: (mapName: string, limit: number, offset: number, searchQuery?: string) => ['tableLatestState', mapName, limit, offset, searchQuery] as const,
+  tableLatestStateCount: (mapName: string, searchQuery?: string) => ['tableLatestStateCount', mapName, searchQuery] as const,
   keyTransactions: (mapName: string, keyName: string, limit: number, offset: number) => ['keyTransactions', mapName, keyName, limit, offset] as const,
   searchByKeyOrValue: (query: string, limit: number) => ['searchByKeyOrValue', query, limit] as const,
 };
@@ -122,6 +124,20 @@ export const useAllTransactions = (limit = 1000, offset = 0, searchQuery?: strin
 };
 
 /**
+ * Hook to get transactions with related data for verification
+ */
+export const useTransactionsWithRelated = (start: number, limit: number) => {
+  return useQuery({
+    queryKey: ['transactionsWithRelated', start, limit],
+    queryFn: async () => {
+      const db = await getDatabase();
+      return db.getTransactionsWithRelated(start, limit);
+    },
+    enabled: start >= 0,
+  });
+};
+
+/**
  * Hook to get total count of all transactions
  */
 export const useAllTransactionsCount = (searchQuery?: string) => {
@@ -130,6 +146,19 @@ export const useAllTransactionsCount = (searchQuery?: string) => {
     queryFn: async () => {
       const db = await getDatabase();
       return db.getAllTransactionsCount(searchQuery);
+    },
+  });
+};
+
+/**
+ * Hook to get total transactions count for verification
+ */
+export const useTotalTransactionsCount = () => {
+  return useQuery({
+    queryKey: ['totalTransactionsCount'],
+    queryFn: async () => {
+      const db = await getDatabase();
+      return db.getTotalTransactionsCount();
     },
   });
 };
@@ -329,12 +358,12 @@ export const useFileDrop = () => {
 /**
  * Hook to get transactions for a specific file with full structure (like useAllTransactions)
  */
-export const useFileTransactions = (fileId: number, limit = 100, offset = 0) => {
+export const useFileTransactions = (fileId: number, limit = 100, offset = 0, searchQuery?: string) => {
   return useQuery({
-    queryKey: ['fileTransactions', fileId, limit, offset],
+    queryKey: ['fileTransactions', fileId, limit, offset, searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getFileTransactions(fileId, limit, offset);
+      return db.getFileTransactions(fileId, limit, offset, searchQuery);
     },
     enabled: fileId > 0,
   });
@@ -357,12 +386,12 @@ export const useTransactionById = (transactionId: number) => {
 /**
  * Hook to get total count of transactions for a specific file
  */
-export const useFileTransactionsCount = (fileId: number) => {
+export const useFileTransactionsCount = (fileId: number, searchQuery?: string) => {
   return useQuery({
-    queryKey: ['fileTransactionsCount', fileId],
+    queryKey: ['fileTransactionsCount', fileId, searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getFileTransactionsCount(fileId);
+      return db.getFileTransactionsCount(fileId, searchQuery);
     },
     enabled: fileId > 0,
   });
@@ -410,6 +439,20 @@ export const useTableLatestState = (mapName: string, limit = 100, offset = 0, se
 };
 
 /**
+ * Hook to get the total count of keys in the latest state of a CCF table
+ */
+export const useTableLatestStateCount = (mapName: string, searchQuery?: string) => {
+  return useQuery({
+    queryKey: queryKeys.tableLatestStateCount(mapName, searchQuery),
+    queryFn: async () => {
+      const db = await getDatabase();
+      return db.getTableLatestStateCount(mapName, searchQuery);
+    },
+    enabled: mapName.length > 0,
+  });
+};
+
+/**
  * Hook to get transactions for a specific key in a CCF table
  */
 export const useKeyTransactions = (mapName: string, keyName: string, limit = 100, offset = 0) => {
@@ -431,5 +474,41 @@ export const useDatabase = () => {
     queryKey: ['database'],
     queryFn: getDatabase,
     staleTime: Infinity, // Database instance doesn't change once created
+  });
+};
+
+/**
+ * Hook to get storage quota information
+ */
+export const useStorageQuota = () => {
+  return useQuery({
+    queryKey: ['storageQuota'],
+    queryFn: getStorageQuota,
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000, // Consider stale after 10 seconds
+  });
+};
+
+/**
+ * Hook to check storage capacity for a specific size
+ */
+export const useStorageCapacity = (requiredBytes: number) => {
+  return useQuery({
+    queryKey: ['storageCapacity', requiredBytes],
+    queryFn: () => checkStorageCapacity(requiredBytes),
+    enabled: requiredBytes > 0,
+    staleTime: 5000, // Consider stale after 5 seconds
+  });
+};
+
+/**
+ * Hook to estimate database size for transaction count
+ */
+export const useEstimateDatabaseSize = (transactionCount: number) => {
+  return useQuery({
+    queryKey: ['estimateDatabaseSize', transactionCount],
+    queryFn: () => estimateDatabaseSize(transactionCount),
+    enabled: transactionCount > 0,
+    staleTime: 60000, // Estimates don't change frequently
   });
 };

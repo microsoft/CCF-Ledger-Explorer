@@ -7,6 +7,9 @@ import { TransactionDetailsPage } from './pages/TransactionDetailsPage';
 import TablesPage from './pages/TablesPage';
 import StatsPage from './pages/StatsPage';
 import { AIPage } from './pages/AIPage';
+import { LedgerVerificationPage } from './pages/LedgerVerificationPage';
+import { VerificationPage } from './pages/VerificationPage';
+import { WriteReceiptVerificationPage } from './pages/WriteReceiptVerificationPage';
 import { MenuBar } from './components/MenuBar';
 import GridLayout from './components/AppLayout';
 import { ConfigPage } from './pages/ConfigPage';
@@ -54,6 +57,9 @@ function App() {
                 <Route path="/tables/:tableName" element={<TablesPage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/ai" element={<AIPage />} />
+                <Route path="/verification" element={<LedgerVerificationPage />} />
+                <Route path="/verification-worker" element={<VerificationPage />} />
+                <Route path="/write-receipt" element={<WriteReceiptVerificationPage />} />
                 <Route path="/transaction/:transactionId" element={<TransactionDetailsPage />} />
                 <Route path="/config" element={<ConfigPage />} />
               </Routes>
@@ -66,4 +72,3 @@ function App() {
 }
 
 export default App;
- 

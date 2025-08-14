@@ -2,15 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
   Input,
-  Field,
+  Label,
   Textarea,
-  Card,
-  CardHeader,
-  CardFooter,
+  Select,
   Divider,
   Spinner,
   Text,
-  Badge,
   MessageBar,
   makeStyles,
   tokens,
@@ -19,23 +16,70 @@ import {
 import {
   Send24Regular,
   Settings24Regular,
-  Database24Regular,
   Bot24Regular,
   Person24Regular,
 } from '@fluentui/react-icons';
 import { CCFDatabase } from '../database/ccf-database';
-import { useConfig } from '../pages/ConfigPage';
+import { useVerification } from '../hooks/use-verification';
+import type { WriteReceipt } from '../types/write-receipt-types';
 
+// Direct IndexedDB check function
+const checkIndexedDBForCheckpoints = async (): Promise<any[]> => {
+  return new Promise((resolve) => {
+    const request = indexedDB.open('CCFVerificationCheckpoints', 1);
+    
+    request.onerror = () => {
+      console.error('Failed to open IndexedDB:', request.error);
+      resolve([]);
+    };
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      
+      if (!db.objectStoreNames.contains('checkpoints')) {
+        console.log('No checkpoints store found');
+        resolve([]);
+        return;
+      }
+      
+      const transaction = db.transaction(['checkpoints'], 'readonly');
+      const store = transaction.objectStore('checkpoints');
+      const getAllRequest = store.getAll();
+      
+      getAllRequest.onerror = () => {
+        console.error('Failed to get checkpoints:', getAllRequest.error);
+        resolve([]);
+      };
+      
+      getAllRequest.onsuccess = () => {
+        const checkpoints = getAllRequest.result;
+        console.log('Direct IndexedDB check found checkpoints:', checkpoints);
+        resolve(checkpoints);
+      };
+    };
+  });
+};
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
-  responseId?: string;
   content: string;
   sqlQuery?: string;
   sqlResult?: unknown[];
   timestamp: Date;
   error?: string;
+  // New verification action fields
+  verificationAction?: 'ledger' | 'receipt';
+  verificationResult?: unknown;
+  receiptData?: {
+    receipt: WriteReceipt;
+    networkCert: string;
+  };
+}
+
+interface OpenAIConfig {
+  apiKey: string;
+  model: string;
 }
 
 interface AIChatProps {
@@ -46,38 +90,59 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     height: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    minHeight: 0, // Critical for flex children to shrink
     ...shorthands.gap('16px'),
     ...shorthands.overflow('hidden'),
   },
-  chatPane: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
+  leftPane: {
+    width: '280px',
+    ...shorthands.borderRight('1px', 'solid', tokens.colorNeutralStroke2),
+    flexShrink: 0,
     ...shorthands.padding('16px'),
-    minWidth: 0,
-    maxWidth: '800px',
-    overflowY: 'auto',
+    backgroundColor: tokens.colorNeutralBackground2,
+    overflowY: 'auto', // Allow left pane to scroll if content is too long
   },
-  chatCard: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  chatHeader: {
+  configHeader: {
     display: 'flex',
     alignItems: 'center',
     ...shorthands.gap('8px'),
   },
-  messagesArea: {
-    flex: 1,
+  configContent: {
     ...shorthands.padding('16px'),
-    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     ...shorthands.gap('16px'),
-    minHeight: 0,
+  },
+  rightPane: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    minHeight: 0, // Critical for flex child to shrink
+    overflow: 'hidden', // Ensure no overflow from the right pane
+    height: '100%', // Explicit height
+  },
+  chatCard: {
+    flex: 1,
+    display: 'grid',
+    gridTemplateRows: '1fr auto', // Messages area takes remaining space, input area is auto-sized
+    overflow: 'hidden', // Critical for proper layout
+    minHeight: 0, // Allow flex child to shrink
+    height: '100%', // Explicit height
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    ...shorthands.borderRadius('8px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  messagesArea: {
+    ...shorthands.padding('24px', '16px', '16px', '16px'),
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.gap('16px'),
+    minHeight: 0, // Critical for scrolling to work properly
+    height: '100%', // Take full available height in grid row
+    position: 'relative', // Ensure proper positioning context
   },
   welcomeContainer: {
     textAlign: 'center',
@@ -186,12 +251,20 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   errorContainer: {
-    ...shorthands.padding('0', '16px'),
+    ...shorthands.padding('8px', '16px', '0', '16px'),
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 10, // Ensure it appears above other content
   },
   inputArea: {
     display: 'flex',
     ...shorthands.gap('8px'),
     width: '100%',
+    ...shorthands.padding('16px'),
+    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke2),
+    backgroundColor: tokens.colorNeutralBackground1,
   },
   inputTextarea: {
     flex: 1,
@@ -202,28 +275,92 @@ const useStyles = makeStyles({
     fontSize: '14px',
     color: tokens.colorNeutralForeground3,
   },
-  badgeText: {
-    ...shorthands.margin('0', '0', '0', '4px'),
-  },
 });
 
 export const AIChat: React.FC<AIChatProps> = ({ database }) => {
   const styles = useStyles();
-  const { config } = useConfig(); 
-  
+  const [config, setConfig] = useState<OpenAIConfig>({
+    apiKey: localStorage.getItem('openai_api_key') || '',
+    model: localStorage.getItem('openai_model') || 'gpt-4o-mini',
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Add verification hooks
+  const verification = useVerification();
+  
+  // Force refresh checkpoints when component mounts
+  useEffect(() => {
+    const refreshCheckpointsOnMount = async () => {
+      try {
+        console.log('AI: Refreshing checkpoints on component mount...');
+        await verification.refreshCheckpoints();
+        console.log('AI: Mount refresh completed, checkpoints:', verification.checkpoints?.length || 0);
+      } catch (error) {
+        console.error('AI: Failed to refresh checkpoints on mount:', error);
+      }
+    };
+    
+    // Add a small delay to ensure everything is initialized
+    setTimeout(refreshCheckpointsOnMount, 1000);
+  }, [verification.refreshCheckpoints]);
+
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Save config to localStorage when it changes
+  useEffect(() => {
+    if (config.apiKey) {
+      localStorage.setItem('openai_api_key', config.apiKey);
+    }
+    localStorage.setItem('openai_model', config.model);
+  }, [config]);
+
   const getSystemPrompt = () => {
-      return config.systemPrompt;
+    return `You are an AI assistant specialized in analyzing CCF (Confidential Consortium Framework) ledger data. You have access to a SQLite database with the following schema:
+
+TABLES:
+- ledger_files: Contains uploaded ledger files (id, filename, file_size, created_at, updated_at)
+- transactions: Contains parsed transactions (id, file_id, version, flags, size, entry_type, tx_version, max_conflict_version, tx_digest, created_at)
+- kv_writes: Contains key-value write operations (id, transaction_id, map_name, key_name, value_text, version, created_at)
+- kv_deletes: Contains key-value delete operations (id, transaction_id, map_name, key_name, version, created_at)
+
+VERIFICATION CAPABILITIES:
+You can also perform cryptographic verification operations:
+- VERIFY_LEDGER: Check if the current ledger is cryptographically verified and return verification status
+- VERIFY_RECEIPT: Validate if a provided write receipt is part of the current ledger
+
+IMPORTANT GUIDELINES:
+1. When answering questions about the data, you MUST write SQL queries to get accurate information
+2. Always use SELECT queries only - never INSERT, UPDATE, DELETE, or DDL statements
+3. Use appropriate JOINs to get comprehensive information
+4. Format SQL queries clearly and explain what they do
+5. If you need to execute a SQL query, include it in your response with the format: \`\`\`sql\n[query]\n\`\`\`
+6. For verification operations, use verification commands directly in your response (NOT in code blocks): VERIFY_LEDGER or VERIFY_RECEIPT
+7. Explain your findings in a user-friendly way
+8. The map_name field typically contains CCF table names like 'public:ccf.gov.nodes', 'public:ccf.internal.consensus', etc.
+9. The value_text field contains UTF-8 decoded values from the ledger
+10. CCF transactions can contain multiple key-value operations
+
+You can answer questions about:
+- Transaction counts and statistics
+- Key-value operations and their content
+- File information and ledger structure
+- Data analysis and patterns
+- Specific searches within the ledger data
+- Ledger verification status and integrity
+- Write receipt validation against the ledger
+
+When users ask about:
+- "Is the ledger verified?", "verification status", "ledger integrity" → respond with VERIFY_LEDGER (not in a code block)
+- "Verify this receipt", "is this receipt valid?", "receipt verification" → respond with VERIFY_RECEIPT (not in a code block)
+
+Always be helpful and provide detailed explanations of your SQL queries and results.`;
   };
 
   const executeQuery = async (sqlQuery: string): Promise<unknown[]> => {
@@ -235,30 +372,240 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
     }
   };
 
-  const callOpenAIResponseAPI = async (messages: ChatMessage[], newMessage: string): Promise<{ id: string; text: string }> => {
-    if (!config.baseUrl) {
-      throw new Error('Base URL is required to send the request');
+  const executeLedgerVerification = async (): Promise<unknown> => {
+    try {
+      console.log('AI: Checking verification status...');
+      console.log('AI: verification.isRunning:', verification.isRunning);
+      console.log('AI: verification.progress:', verification.progress);
+      console.log('AI: verification.checkpoints:', verification.checkpoints);
+      console.log('AI: verification.checkpoints.length:', verification.checkpoints?.length || 0);
+
+      // First check if there's an active verification running
+      if (verification.isRunning && verification.progress) {
+        console.log('AI: Found active verification');
+        const isComplete = verification.progress.status === 'completed';
+        const hasError = !!verification.error;
+        const progress = verification.progress.totalTransactions > 0 
+          ? (verification.progress.currentTransaction / verification.progress.totalTransactions) * 100 
+          : 0;
+        
+        return {
+          status: verification.progress.status,
+          progress: progress,
+          currentTransaction: verification.progress.currentTransaction,
+          totalTransactions: verification.progress.totalTransactions,
+          processedFiles: verification.progress.processedFiles,
+          totalFiles: verification.progress.totalFiles,
+          currentFileName: verification.progress.currentFileName,
+          isComplete,
+          isVerified: isComplete && !hasError,
+          error: verification.error,
+          message: isComplete 
+            ? (hasError ? 'Ledger verification failed' : 'Ledger verification completed successfully')
+            : `Verification in progress: ${progress.toFixed(1)}% (${verification.progress.currentTransaction}/${verification.progress.totalTransactions} transactions)`
+        };
+      }
+
+      // Check for any completed checkpoints from previous sessions
+      if (verification.checkpoints && verification.checkpoints.length > 0) {
+        console.log('AI: Found checkpoints, count:', verification.checkpoints.length);
+        console.log('AI: Checkpoints:', verification.checkpoints);
+        
+        // Find the most recent checkpoint
+        const latestCheckpoint = verification.checkpoints
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+        
+        console.log('AI: Latest checkpoint:', latestCheckpoint);
+        
+        if (latestCheckpoint) {
+          const isCompleted = latestCheckpoint.status === 'pass';
+          const hasError = latestCheckpoint.status === 'fail';
+          const isStopped = latestCheckpoint.status === 'stopped';
+          
+          return {
+            status: isCompleted ? 'completed' : hasError ? 'failed' : 'stopped',
+            lastVerifiedTransaction: latestCheckpoint.lastVerifiedTransaction,
+            totalTransactionsProcessed: latestCheckpoint.totalTransactionsProcessed,
+            currentFileIndex: latestCheckpoint.currentFileIndex,
+            lastVerifiedFile: latestCheckpoint.lastVerifiedFile,
+            isComplete: isCompleted,
+            isVerified: isCompleted && !hasError,
+            sessionId: latestCheckpoint.id,
+            timestamp: new Date(latestCheckpoint.timestamp).toLocaleString(),
+            failureDetails: latestCheckpoint.failureDetails,
+            message: isCompleted 
+              ? 'Ledger verification completed successfully'
+              : hasError 
+                ? `Ledger verification failed: ${latestCheckpoint.failureDetails?.errorMessage || 'Unknown error'}`
+                : isStopped 
+                  ? `Verification was stopped after processing ${latestCheckpoint.totalTransactionsProcessed} transactions. Use resume to continue.`
+                  : `Previous verification processed ${latestCheckpoint.totalTransactionsProcessed} transactions`,
+            debugInfo: {
+              checkpointStatus: latestCheckpoint.status,
+              checkpointTimestamp: latestCheckpoint.timestamp,
+              isCompleted,
+              hasError,
+              isStopped
+            }
+          };
+        }
+      }
+
+      console.log('AI: No verification or checkpoints found');
+      
+      // No verification found - but let's try to refresh checkpoints and check again
+      console.log('AI: Attempting to refresh checkpoints...');
+      try {
+        await verification.refreshCheckpoints();
+        console.log('AI: Checkpoints refreshed, new count:', verification.checkpoints?.length || 0);
+        
+        if (verification.checkpoints && verification.checkpoints.length > 0) {
+          console.log('AI: Found checkpoints after refresh!');
+          const latestCheckpoint = verification.checkpoints
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+          
+          const isCompleted = latestCheckpoint.status === 'pass';
+          const hasError = latestCheckpoint.status === 'fail';
+          
+          return {
+            status: isCompleted ? 'completed' : hasError ? 'failed' : 'stopped',
+            lastVerifiedTransaction: latestCheckpoint.lastVerifiedTransaction,
+            totalTransactionsProcessed: latestCheckpoint.totalTransactionsProcessed,
+            message: isCompleted 
+              ? 'Ledger verification completed successfully (found after refresh)'
+              : hasError 
+                ? `Ledger verification failed: ${latestCheckpoint.failureDetails?.errorMessage || 'Unknown error'}`
+                : `Verification was stopped after processing ${latestCheckpoint.totalTransactionsProcessed} transactions`,
+            refreshedCheckpoints: true
+          };
+        }
+      } catch (refreshError) {
+        console.error('AI: Failed to refresh checkpoints:', refreshError);
+      }
+      
+      // Direct IndexedDB check as a last resort
+      console.log('AI: Trying direct IndexedDB check...');
+      try {
+        const directCheckpoints = await checkIndexedDBForCheckpoints();
+        console.log('AI: Direct IndexedDB found:', directCheckpoints.length, 'checkpoints');
+        
+        if (directCheckpoints.length > 0) {
+          const latestCheckpoint = directCheckpoints
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+          
+          console.log('AI: Latest checkpoint from direct check:', latestCheckpoint);
+          
+          const isCompleted = latestCheckpoint.status === 'pass';
+          const hasError = latestCheckpoint.status === 'fail';
+          
+          return {
+            status: isCompleted ? 'completed' : hasError ? 'failed' : 'stopped',
+            lastVerifiedTransaction: latestCheckpoint.lastVerifiedTransaction,
+            totalTransactionsProcessed: latestCheckpoint.totalTransactionsProcessed,
+            message: isCompleted 
+              ? 'Ledger verification completed successfully (found via direct IndexedDB check)'
+              : hasError 
+                ? `Ledger verification failed: ${latestCheckpoint.failureDetails?.errorMessage || 'Unknown error'}`
+                : `Verification was stopped after processing ${latestCheckpoint.totalTransactionsProcessed} transactions`,
+            foundViaDirectCheck: true,
+            hookCheckpointsCount: verification.checkpoints?.length || 0
+          };
+        }
+      } catch (directError) {
+        console.error('AI: Direct IndexedDB check failed:', directError);
+      }
+
+      return {
+        status: 'not_started',
+        message: 'No ledger verification has been started. Please start verification manually from the verification page.',
+        isRunning: verification.isRunning,
+        hasProgress: !!verification.progress,
+        availableCheckpoints: verification.checkpoints?.length || 0,
+        debugInfo: {
+          hookState: {
+            isRunning: verification.isRunning,
+            hasProgress: !!verification.progress,
+            checkpointsLength: verification.checkpoints?.length || 0,
+            currentSessionId: verification.currentSessionId
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Ledger verification error:', error);
+      return {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown verification error',
+        message: 'Failed to execute ledger verification'
+      };
+    }
+  };
+
+  const executeReceiptVerification = async (receiptJson?: string, networkCert?: string): Promise<unknown> => {
+    try {
+      if (!receiptJson || !networkCert) {
+        return {
+          status: 'error',
+          error: 'Both receipt JSON and network certificate are required for verification',
+          message: 'Please provide both the write receipt JSON and network certificate'
+        };
+      }
+
+      // Parse the receipt
+      let receipt: WriteReceipt;
+      try {
+        receipt = JSON.parse(receiptJson);
+      } catch (error) {
+        return {
+          status: 'error',
+          error: 'Invalid receipt JSON format',
+          message: 'The provided receipt JSON is not valid'
+        };
+      }
+
+      // For now, return a message that receipt verification needs to be implemented
+      // with proper database integration
+      return {
+        status: 'not_implemented',
+        message: 'Receipt verification against ledger database is not yet implemented in the AI assistant. Please use the Write Receipt Verification page for full verification.',
+        receiptStructure: {
+          cert: !!receipt.cert,
+          nodeId: receipt.nodeId,
+          signature: !!receipt.signature,
+          proof: receipt.proof?.length || 0,
+          leafComponents: !!receipt.leafComponents
+        }
+      };
+    } catch (error) {
+      console.error('Receipt verification error:', error);
+      return {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown verification error',
+        message: 'Failed to execute receipt verification'
+      };
+    }
+  };
+
+  const callOpenAI = async (messages: ChatMessage[], newMessage: string): Promise<string> => {
+    if (!config.apiKey) {
+      throw new Error('OpenAI API key is required');
     }
 
-    let input = '';
-    // collect prior conversations as history for this question
-    messages.forEach(m => {
-      input += `${m.role} said: ${m.content}\n`;
-    });
-
-    const previousResponseId = messages.length > 0 ? messages[messages.length - 1].responseId : null;
-
-    input += `User asks: ${newMessage}\n`;
-
-    const response = await fetch(config.baseUrl + '/v1/responses', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        input: input,
-        instructions: getSystemPrompt(),
-        previous_response_id: previousResponseId,
+        model: config.model,
+        messages: [
+          { role: 'system', content: getSystemPrompt() },
+          ...messages.map(m => ({
+            role: m.role,
+            content: m.content + (m.sqlResult ? `\n\nSQL Query Result: ${JSON.stringify(m.sqlResult, null, 2)}` : ''),
+          })),
+          { role: 'user', content: newMessage },
+        ],
         temperature: 0.1,
         max_tokens: 2000,
       }),
@@ -270,31 +617,29 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
     }
 
     const data = await response.json();
-    let concatenatedResponse = "";
-    if (data.output && data.output.length > 0) {
-      for (const output of data.output) {
-        if (output.type === 'message') {
-          for (const messageContent of output.content) {
-            if (messageContent.type === 'output_text') {
-              concatenatedResponse += `${messageContent.text}\n`;
-            } else {
-              concatenatedResponse += `type: ${messageContent.type}\n`;
-            }
-          }
-        } else {
-          concatenatedResponse += `type: ${output.type}\n`;
-        }
-      }
-    }
-    return {
-      id: data.id || '',
-      text: concatenatedResponse || 'No response received'
-    };
+    return data.choices[0]?.message?.content || 'No response received';
   };
 
   const extractSqlQuery = (content: string): string | null => {
     const sqlMatch = content.match(/```sql\n([\s\S]*?)\n```/);
-    return sqlMatch ? sqlMatch[1].trim() : null;
+    const query = sqlMatch ? sqlMatch[1].trim() : null;
+    
+    // Don't treat verification commands as SQL queries
+    if (query && (query.includes('VERIFY_LEDGER') || query.includes('VERIFY_RECEIPT'))) {
+      return null;
+    }
+    
+    return query;
+  };
+
+  const extractVerificationCommand = (content: string): 'ledger' | 'receipt' | null => {
+    if (content.includes('VERIFY_LEDGER')) {
+      return 'ledger';
+    }
+    if (content.includes('VERIFY_RECEIPT')) {
+      return 'receipt';
+    }
+    return null;
   };
 
   const handleSendMessage = async () => {
@@ -314,13 +659,19 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
 
     try {
       // Get AI response
-      const aiResponse = await callOpenAIResponseAPI(messages, userMessage.content);
+      const aiResponse = await callOpenAI(messages, userMessage.content);
       
       // Check if the response contains a SQL query
-      const sqlQuery = extractSqlQuery(aiResponse.text);
+      const sqlQuery = extractSqlQuery(aiResponse);
+      
+      // Check if the response contains a verification command
+      const verificationCommand = extractVerificationCommand(aiResponse);
+      
       let sqlResult: unknown[] | undefined;
+      let verificationResult: unknown | undefined;
       let executionError: string | undefined;
 
+      // Execute SQL query if present
       if (sqlQuery) {
         try {
           sqlResult = await executeQuery(sqlQuery);
@@ -329,13 +680,27 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
         }
       }
 
+      // Execute verification command if present
+      if (verificationCommand) {
+        try {
+          if (verificationCommand === 'ledger') {
+            verificationResult = await executeLedgerVerification();
+          } else if (verificationCommand === 'receipt') {
+            verificationResult = await executeReceiptVerification();
+          }
+        } catch (err) {
+          executionError = err instanceof Error ? err.message : 'Verification execution failed';
+        }
+      }
+
       const assistantMessage: ChatMessage = {
-        id: aiResponse.id || (Date.now() + 1).toString(),
-        responseId: aiResponse.id,
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: aiResponse.text,
+        content: aiResponse,
         sqlQuery: sqlQuery || undefined,
         sqlResult,
+        verificationAction: verificationCommand || undefined,
+        verificationResult,
         error: executionError,
         timestamp: new Date(),
       };
@@ -378,38 +743,73 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
 
   return (
     <div className={styles.container}>
+      {/* Left Pane - Configuration */}
+      <div className={styles.leftPane}>
+        <div>
+          <div className={styles.configHeader}>
+            <Settings24Regular />
+            <Text weight="semibold">Configuration</Text>
+          </div>
+          <div className={styles.configContent}>
+            <div>
+              <Label htmlFor="api-key">OpenAI API Key</Label>
+              <Input
+                id="api-key"
+                type="password"
+                placeholder="sk-..."
+                value={config.apiKey}
+                onChange={(_, data) => setConfig(prev => ({ ...prev, apiKey: data.value }))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="model">Model</Label>
+              <Select
+                id="model"
+                value={config.model}
+                onChange={(_, data) => setConfig(prev => ({ ...prev, model: data.value }))}
+              >
+                {[
+                  { value: 'gpt-4o', label: 'GPT-4o' },
+                  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+                  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+                  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+                ].map(model => (
+                  <option key={model.value} value={model.value}>
+                    {model.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <Divider />
+
+            <div>
+              <Text size={200} className={styles.helpText}>
+                The AI can query your CCF database to answer questions about transactions, 
+                key-value operations, and ledger statistics.
+              </Text>
+            </div>
+
+            <Button onClick={clearChat} appearance="outline">
+              Clear Chat
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Right Pane - Chat Interface */}
-      <div className={styles.chatPane}>
-        <Card className={styles.chatCard}>
-          <CardHeader
-            header={
-              <div className={styles.chatHeader}>
-                <Bot24Regular />
-                <Text weight="semibold">Sage Assistant</Text>
-                <Badge appearance="outline" size="small">
-                  <Database24Regular />
-                  <span className={styles.badgeText}>SQL Enabled</span>
-                </Badge>
-
-                { error || messages.length > 0 ? (
-                  <Button onClick={clearChat} appearance="outline">
-                    New conversation
-                  </Button>
-                ) : null }
-              </div>
-            }
-          />
-
+      <div className={styles.rightPane}>
+        <div className={styles.chatCard}>
           {/* Messages Area */}
           <div className={styles.messagesArea}>
             {messages.length === 0 && (
               <div className={styles.welcomeContainer}>
                 <Bot24Regular className={styles.welcomeIcon} />
                 <div>
-                  <Text size={400} weight="semibold">Welcome to CCF Ledger AI</Text>
+                  <Text size={500} weight="semibold">CCF Ledger AI Assistant</Text>
                   <br />
-                  <Text size={200}>
+                  <Text size={300}>
                     Ask me anything about your CCF ledger data. I can write SQL queries to analyze 
                     transactions, key-value operations, and provide insights.
                   </Text>
@@ -460,10 +860,23 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
                       </div>
                     )}
                     
+                    {(message.verificationResult !== undefined && message.verificationResult !== null) && (
+                      <div className={styles.sqlSection}>
+                        <Text size={200} weight="semibold" className={styles.sqlResultHeader}>
+                          {message.verificationAction === 'ledger' ? 'Ledger Verification:' : 'Receipt Verification:'}
+                        </Text>
+                        <pre className={styles.sqlResult}>
+                          {typeof message.verificationResult === 'string' 
+                            ? message.verificationResult 
+                            : JSON.stringify(message.verificationResult, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    
                     {message.error && (
                       <div className={styles.errorSection}>
                         <MessageBar intent="error">
-                          <Text size={200}>SQL Error: {message.error}</Text>
+                          <Text size={200}>Error: {message.error}</Text>
                         </MessageBar>
                       </div>
                     )}
@@ -486,17 +899,16 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className={styles.errorContainer}>
-              <MessageBar intent="error" onDismiss={() => setError(null)}>
-                {error}
-              </MessageBar>
-            </div>
-          )}
+          {/* Input Area with optional error display above it */}
+          <div style={{ position: 'relative' }}>
+            {error && (
+              <div className={styles.errorContainer}>
+                <MessageBar intent="error">
+                  {error}
+                </MessageBar>
+              </div>
+            )}
 
-          {/* Input Area */}
-          <CardFooter>
             <div className={styles.inputArea}>
               <Textarea
                 placeholder="Ask me about your CCF ledger data..."
@@ -511,11 +923,11 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
                 appearance="primary"
                 icon={<Send24Regular />}
                 onClick={handleSendMessage}
-                disabled={!currentMessage.trim() || isLoading || !config.baseUrl}
+                disabled={!currentMessage.trim() || isLoading || !config.apiKey}
               />
             </div>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

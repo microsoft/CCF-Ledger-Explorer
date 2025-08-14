@@ -17,6 +17,7 @@ export interface LedgerKeyValue {
   key: string;
   value: Uint8Array;
   version: number;
+  mapName?: string; // Table/map name for organizing data
 }
 
 export interface PublicDomain {

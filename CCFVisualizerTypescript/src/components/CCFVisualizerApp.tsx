@@ -10,18 +10,9 @@ import {
   Tree,
   TreeItem,
   TreeItemLayout,
-  DataGrid,
-  DataGridHeader,
-  DataGridRow,
-  DataGridHeaderCell,
-  DataGridCell,
-  DataGridBody,
   Badge,
-  Tooltip,
   Button,
-  createTableColumn,
 } from '@fluentui/react-components';
-import type { TableColumnDefinition } from '@fluentui/react-components';
 import {
   Document24Regular,
   ChevronLeft24Regular,
@@ -33,11 +24,14 @@ import {
   useLedgerFiles, 
   useFileTransactions,
   useFileTransactionsCount,
-  useAllTransactions,
-  useAllTransactionsCount 
+  useStorageQuota
 } from '../hooks/use-ccf-data';
 import { FileUploadArea } from './FileUploadArea';
-import { EntryType } from '../types/ccf-types';
+import { LedgerVisualization } from './LedgerVisualization';
+import { TransactionDataGrid } from './TransactionDataGrid';
+import type { TransactionType } from '../utils/transaction-classification';
+import { filterTransactionsByTypes } from '../utils/transaction-classification';
+
 
 const useStyles = makeStyles({
   container: {
@@ -160,29 +154,6 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     maxWidth: '150px',
   },
-  monoFont: {
-    fontFamily: 'monospace',
-  },
-  monoFontSmall: {
-    fontFamily: 'monospace',
-    fontSize: '13px',
-  },
-  monoFontMedium: {
-    fontFamily: 'monospace',
-    fontSize: '14px',
-  },
-  operationsContainer: {
-    display: 'flex',
-    gap: '4px',
-  },
-  mapNameContainer: {
-    fontFamily: 'monospace',
-    fontSize: '13px',
-    maxWidth: '100px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
   fileNameTooltip: {
     maxWidth: '120px',
     overflow: 'hidden',
@@ -226,28 +197,12 @@ const useStyles = makeStyles({
     fontSize: '13px',
     color: 'var(--colorNeutralForeground2)',
   },
+  visualizationContainer: {
+    padding: '16px 24px',
+    borderBottom: '1px solid var(--colorNeutralStroke2)',
+    backgroundColor: 'var(--colorNeutralBackground1)',
+  },
 });
-
-// Helper function to format entry type
-const getEntryTypeLabel = (entryType: number): string => {
-  switch (entryType) {
-    case EntryType.WriteSet: return 'WriteSet';
-    case EntryType.Snapshot: return 'Snapshot';
-    case EntryType.WriteSetWithClaims: return 'WithClaims';
-    case EntryType.WriteSetWithCommitEvidence: return 'WithEvidence';
-    case EntryType.WriteSetWithCommitEvidenceAndClaims: return 'WithBoth';
-    default: return 'Unknown';
-  }
-};
-
-// Helper function to format bytes
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
 
 export const CCFVisualizerApp: React.FC = () => {
   const styles = useStyles();
@@ -257,34 +212,39 @@ export const CCFVisualizerApp: React.FC = () => {
   const [transactionPage, setTransactionPage] = useState(0);
   const [sidebarWidth, setSidebarWidth] = useState(250); // Default sidebar width
   const [isResizing, setIsResizing] = useState(false);
+  const [selectedTypeFilters, setSelectedTypeFilters] = useState<Set<TransactionType>>(new Set());
   const pageSize = 50;
   
   const { data: stats } = useStats();
   const { data: ledgerFiles } = useLedgerFiles();
   const { isUploading, uploadError } = useFileDrop();
+  const { data: storageInfo } = useStorageQuota();
   
-  // Get file-specific transactions if a file is selected
+  // Auto-select the first file when files are loaded
+  React.useEffect(() => {
+    if (ledgerFiles && ledgerFiles.length > 0 && selectedFileId === null) {
+      setSelectedFileId(ledgerFiles[0].id);
+    }
+  }, [ledgerFiles, selectedFileId]);
+  
+  // Get file-specific transactions with server-side search
   const { data: fileTransactions, isLoading: fileTransactionsLoading } = useFileTransactions(
     selectedFileId || 0, 
     pageSize, 
-    transactionPage * pageSize
+    transactionPage * pageSize,
+    searchQuery || undefined
   );
   
-  // Get all transactions (used when no file is selected or for search)
-  const { data: allTransactions, isLoading: allTransactionsLoading } = useAllTransactions(
-    pageSize, 
-    transactionPage * pageSize, 
-    searchQuery
+  // Get transaction count for the selected file with search
+  const { data: fileTransactionsCount } = useFileTransactionsCount(
+    selectedFileId || 0, 
+    searchQuery || undefined
   );
   
-  // Use the appropriate data source
-  const transactions = selectedFileId && !searchQuery ? fileTransactions : allTransactions;
-  const transactionsLoading = selectedFileId && !searchQuery ? fileTransactionsLoading : allTransactionsLoading;
-  
-  // Get total count based on current view
-  const { data: fileTransactionsCount } = useFileTransactionsCount(selectedFileId || 0);
-  const { data: allTransactionsCount } = useAllTransactionsCount(searchQuery);
-  const totalTransactions = selectedFileId && !searchQuery ? fileTransactionsCount : allTransactionsCount;
+  // Apply only type filtering to transactions (search is now server-side)
+  const transactions = fileTransactions ? filterTransactionsByTypes(fileTransactions, selectedTypeFilters) : fileTransactions;
+  const transactionsLoading = fileTransactionsLoading;
+  const totalTransactions = fileTransactionsCount;
 
   const hasData = stats && (stats.fileCount > 0 || stats.transactionCount > 0);
 
@@ -294,19 +254,18 @@ export const CCFVisualizerApp: React.FC = () => {
       selectedFileId,
       searchQuery,
       fileTransactions,
-      allTransactions,
       transactions,
       transactionsLoading,
       totalTransactions,
       hasData,
-      stats
+      stats,
+      currentPage: transactionPage + 1,
+      totalPages: Math.ceil((totalTransactions || 0) / pageSize)
     });
-  }, [selectedFileId, searchQuery, fileTransactions, allTransactions, transactions, transactionsLoading, totalTransactions, hasData, stats]);
+  }, [selectedFileId, searchQuery, fileTransactions, transactions, transactionsLoading, totalTransactions, hasData, stats, transactionPage]);
 
   const handleFileSelect = (fileId: number) => {
     setSelectedFileId(fileId);
-    // Clear search when selecting a file and reset to first page
-    setSearchQuery('');
     setTransactionPage(0);
   };
 
@@ -316,14 +275,8 @@ export const CCFVisualizerApp: React.FC = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setTransactionPage(0); // Reset to first page on new search
-    if (query && transactions && transactions.length > 0) {
-      // Auto-select the file containing the first matching transaction
-      const firstMatch = transactions[0];
-      if (firstMatch) {
-        setSelectedFileId(firstMatch.fileId);
-      }
-    }
+    setTransactionPage(0);
+    // Note: Search is now performed server-side with proper pagination
   };
 
   const handlePreviousPage = () => {
@@ -386,107 +339,14 @@ export const CCFVisualizerApp: React.FC = () => {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Define transaction type for table columns
-  type TransactionRow = {
-    id: number;
-    fileId: number;
-    fileName: string;
-    sequenceNumber: number;
-    version: number;
-    flags: number;
-    size: number;
-    entryType: number;
-    txVersion: number;
-    maxConflictVersion: number;
-    writeCount: number;
-    deleteCount: number;
-    mapName?: string;
+  // Helper function to format bytes (still used in status bar and file tree)
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
-  // Table columns definition
-  const columns: TableColumnDefinition<TransactionRow>[] = [
-    createTableColumn<TransactionRow>({
-      columnId: 'sequence',
-      compare: (a, b) => a.sequenceNumber - b.sequenceNumber,
-      renderHeaderCell: () => 'Sequence',
-      renderCell: (item) => (
-        <div className={styles.monoFontMedium}>
-          #{item.sequenceNumber}
-        </div>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'file',
-      compare: (a, b) => a.fileName.localeCompare(b.fileName),
-      renderHeaderCell: () => 'File',
-      renderCell: (item) => (
-        <Tooltip content={item.fileName} relationship="label">
-          <div className={styles.fileNameTooltip}>
-            {item.fileName}
-          </div>
-        </Tooltip>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'type',
-      compare: (a, b) => a.entryType - b.entryType,
-      renderHeaderCell: () => 'Type',
-      renderCell: (item) => (
-        <Badge appearance="outline" size="small">
-          {getEntryTypeLabel(item.entryType)}
-        </Badge>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'version',
-      compare: (a, b) => a.txVersion - b.txVersion,
-      renderHeaderCell: () => 'Version',
-      renderCell: (item) => (
-        <div className={styles.monoFont}>
-          {item.txVersion}
-        </div>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'size',
-      compare: (a, b) => a.size - b.size,
-      renderHeaderCell: () => 'Size',
-      renderCell: (item) => (
-        <div className={styles.monoFontSmall}>
-          {formatBytes(item.size)}
-        </div>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'operations',
-      compare: (a, b) => (a.writeCount + a.deleteCount) - (b.writeCount + b.deleteCount),
-      renderHeaderCell: () => 'Operations',
-      renderCell: (item) => (
-        <div className={styles.operationsContainer}>
-          {item.writeCount > 0 && (
-            <Badge appearance="filled" color="success" size="small">
-              {item.writeCount}W
-            </Badge>
-          )}
-          {item.deleteCount > 0 && (
-            <Badge appearance="filled" color="danger" size="small">
-              {item.deleteCount}D
-            </Badge>
-          )}
-        </div>
-      ),
-    }),
-    createTableColumn<TransactionRow>({
-      columnId: 'map',
-      compare: (a, b) => (a.mapName || '').localeCompare(b.mapName || ''),
-      renderHeaderCell: () => 'Map',
-      renderCell: (item) => (
-        <div className={styles.mapNameContainer}>
-          {item.mapName || 'N/A'}
-        </div>
-      ),
-    }),
-  ];
 
   // Show upload screen if no data
   if (!hasData) {
@@ -611,45 +471,26 @@ export const CCFVisualizerApp: React.FC = () => {
             </div>
           </div>
 
+          {/* Ledger Visualization */}
+          {transactions && transactions.length > 0 && (
+            <div className={styles.visualizationContainer}>
+              <LedgerVisualization
+                transactions={transactions}
+                isLoading={transactionsLoading}
+                maxTransactions={500}
+                selectedTypeFilters={selectedTypeFilters}
+                onFilterChange={setSelectedTypeFilters}
+              />
+            </div>
+          )}
+
           {/* Transaction Table */}
           <div className={styles.tableContainer}>
             {transactions && transactions.length > 0 ? (
-              <DataGrid
-                items={transactions}
-                columns={columns}
-                sortable
-                selectionMode="single"
-                onSelectionChange={(_, data) => {
-                  if (data.selectedItems.size > 0) {
-                    const selectedItems = Array.from(data.selectedItems);
-                    const rowIndex = parseInt(selectedItems[0] as string);
-                    const selectedTransaction = transactions[rowIndex];
-                    if (selectedTransaction) {
-                      handleTransactionClick(selectedTransaction.id);
-                    }
-                  }
-                }}
-                style={{ height: '100%' }}
-              >
-                <DataGridHeader>
-                  <DataGridRow>
-                    {({ renderHeaderCell }) => (
-                      <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                    )}
-                  </DataGridRow>
-                </DataGridHeader>
-                <DataGridBody<TransactionRow>>
-                  {({ item, rowId }) => (
-                    <DataGridRow<TransactionRow> key={rowId}>
-                      {({ renderCell }) => (
-                        <DataGridCell>
-                          {renderCell(item)}
-                        </DataGridCell>
-                      )}
-                    </DataGridRow>
-                  )}
-                </DataGridBody>
-              </DataGrid>
+              <TransactionDataGrid
+                transactions={transactions}
+                onTransactionClick={handleTransactionClick}
+              />
             ) : transactionsLoading ? (
               <div className={styles.loadingContainer}>
                 <Spinner label="Loading transactions..." />
@@ -700,6 +541,9 @@ export const CCFVisualizerApp: React.FC = () => {
           {totalTransactions && totalTransactions > pageSize && ` of ${totalTransactions}`} transactions
           {selectedFileId && ledgerFiles && (
             <> • Selected: {ledgerFiles.find(f => f.id === selectedFileId)?.filename}</>
+          )}
+          {storageInfo?.quota && (
+            <> • Storage: {formatBytes(storageInfo.quota.usage)} / {formatBytes(storageInfo.quota.quota)} used ({storageInfo.quota.usagePercentage.toFixed(1)}%)</>
           )}
         </Caption1>
       </footer>
