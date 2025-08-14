@@ -231,7 +231,7 @@ export class CCFDatabase {
 
           writeStmt.run([
             txId,
-            transaction.publicDomain.mapName,
+            write.mapName || '', // Use mapName from individual write
             write.key,
             valueText,
             write.version,
@@ -242,7 +242,7 @@ export class CCFDatabase {
         for (const del of transaction.publicDomain.deletes) {
           deleteStmt.run([
             txId,
-            transaction.publicDomain.mapName,
+            del.mapName || '', // Use mapName from individual delete
             del.key,
             del.version,
           ]);
@@ -321,7 +321,7 @@ export class CCFDatabase {
 
         writeStmt.run([
           txId,
-          transaction.publicDomain.mapName,
+          write.mapName || '', // Use mapName from individual write
           write.key,
           valueText,
           write.version,
@@ -338,7 +338,7 @@ export class CCFDatabase {
       for (const del of transaction.publicDomain.deletes) {
         deleteStmt.run([
           txId,
-          transaction.publicDomain.mapName,
+          del.mapName || '', // Use mapName from individual delete
           del.key,
           del.version,
         ]);

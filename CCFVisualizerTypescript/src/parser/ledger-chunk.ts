@@ -153,20 +153,18 @@ export class LedgerChunkV2 {
 
     const writes: LedgerKeyValue[] = [];
     const deletes: LedgerKeyValue[] = [];
-    let mapName = '';
-    let mapVersion = 0;
 
     // Parse map entries
     while (offset < publicDomainSize) {
       const mapNameSize = Number(view.getBigUint64(offset, true));
       offset += 8;
 
-      mapName = new TextDecoder().decode(
+      const mapName = new TextDecoder().decode(
         new Uint8Array(view.buffer, view.byteOffset + offset, mapNameSize)
       );
       offset += mapNameSize;
 
-      mapVersion = Number(view.getBigUint64(offset, true));
+      const mapVersion = Number(view.getBigUint64(offset, true));
       offset += 8;
 
       const readCount = Number(view.getBigUint64(offset, true));
@@ -233,8 +231,8 @@ export class LedgerChunkV2 {
       maxConflictVersion,
       writes,
       deletes,
-      mapName,
-      mapVersion,
+      mapName: '', // Deprecated: mapName is now stored in individual writes/deletes
+      mapVersion: 0, // Deprecated: mapVersion is now stored in individual writes/deletes
     };
   }
 
