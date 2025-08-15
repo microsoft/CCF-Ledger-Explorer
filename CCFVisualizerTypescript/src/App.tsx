@@ -7,6 +7,7 @@ import { TransactionDetailsPage } from './pages/TransactionDetailsPage';
 import TablesPage from './pages/TablesPage';
 import StatsPage from './pages/StatsPage';
 import { AIPage } from './pages/AIPage';
+import { StartPage } from './pages/StartPage';
 import { LedgerVerificationPage } from './pages/LedgerVerificationPage';
 import { VerificationPage } from './pages/VerificationPage';
 import { WriteReceiptVerificationPage } from './pages/WriteReceiptVerificationPage';
@@ -52,11 +53,12 @@ function App() {
             </GridLayout.Top>
             <GridLayout.Main>
               <Routes>
-                <Route path="/" element={<CCFVisualizerApp />} />
+                <Route path="/" element={<StartPage />} />
+                <Route path="/chat" element={<AIPage />} />
+                <Route path="/files" element={<CCFVisualizerApp />} />
                 <Route path="/tables" element={<TablesPage />} />
                 <Route path="/tables/:tableName" element={<TablesPage />} />
                 <Route path="/stats" element={<StatsPage />} />
-                <Route path="/ai" element={<AIPage />} />
                 <Route path="/verification" element={<LedgerVerificationPage />} />
                 <Route path="/verification-worker" element={<VerificationPage />} />
                 <Route path="/write-receipt" element={<WriteReceiptVerificationPage />} />

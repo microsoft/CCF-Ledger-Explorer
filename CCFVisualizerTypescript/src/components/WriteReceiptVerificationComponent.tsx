@@ -1,5 +1,3 @@
-// Write Receipt Verification Component
-
 import React, { useState, useCallback } from 'react';
 import {
   Button,
@@ -14,7 +12,8 @@ import {
   Textarea,
   makeStyles,
   tokens,
-  Spinner
+  Spinner,
+  CardFooter
 } from '@fluentui/react-components';
 import {
   DocumentSearch24Regular,
@@ -30,10 +29,18 @@ const useStyles = makeStyles({
   container: {
     padding: tokens.spacingVerticalL,
     display: 'flex',
+    overflow: 'hidden',
+    height: '100%',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
     maxWidth: '1200px',
     margin: '0 auto',
+  },
+  containerItem: {
+    flex: 1,
+    overflow: 'auto',
+    height: '100%',
+    minHeight: 0,
+    paddingBottom: '50px',
   },
   card: {
     width: '100%',
@@ -42,6 +49,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
+    width: '100%',
+    padding: tokens.spacingVerticalM,
   },
   resultsSection: {
     display: 'flex',
@@ -175,194 +184,195 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
 
   return (
     <div className={classes.container}>
-      {/* Header */}
-      <Card className={classes.card}>
-        <CardHeader
-          header={
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-              <DocumentSearch24Regular />
-              <Text weight="semibold" size={500}>Write Receipt Verification</Text>
-            </div>
-          }
-          description={
-            <Text>
-              Verify that a transaction receipt matches the data in the ledger by validating the Merkle tree proof.
-            </Text>
-          }
-        />
-      </Card>
-
-      {/* Input Section */}
-      <Card className={classes.card}>
-        <CardHeader
-          header={<Text weight="semibold">Receipt Input</Text>}
-        />
-        <CardPreview>
-          <div className={classes.inputSection}>
-            <Field
-              label="Write Receipt JSON"
-              hint="Paste the complete write receipt JSON here"
-            >
-              <Textarea
-                value={receiptText}
-                onChange={(_, data) => setReceiptText(data.value)}
-                placeholder={`Paste your receipt JSON here or try this example:\\n\\n${exampleReceipt}`}
-                rows={12}
-                style={{ fontFamily: tokens.fontFamilyMonospace }}
-              />
-            </Field>
-
-            <Field
-              label="Network Certificate"
-              hint="Paste the network certificate (PEM format)"
-            >
-              <Textarea
-                value={networkCertText}
-                onChange={(_, data) => setNetworkCertText(data.value)}
-                placeholder="-----BEGIN CERTIFICATE-----\\n...\\n-----END CERTIFICATE-----"
-                rows={8}
-                style={{ fontFamily: tokens.fontFamilyMonospace }}
-              />
-            </Field>
-
-            <div className={classes.controlsSection}>
-              <Button
-                appearance="primary"
-                icon={<DocumentSearch24Regular />}
-                onClick={parseReceipt}
-                disabled={!receiptText.trim()}
-              >
-                Parse & Verify Receipt
-              </Button>
-
-              <Button
-                appearance="secondary"
-                onClick={clearAll}
-              >
-                Clear All
-              </Button>
-
-              {isLoading && <Spinner size="tiny" />}
-            </div>
-
-            {parseError && (
-              <MessageBar intent="error">
-                <MessageBarBody>{parseError}</MessageBarBody>
-              </MessageBar>
-            )}
-
-            {error && (
-              <MessageBar intent="error">
-                <MessageBarBody>Verification Error: {error}</MessageBarBody>
-              </MessageBar>
-            )}
-          </div>
-        </CardPreview>
-      </Card>
-
-      {/* Results Section */}
-      {parsedReceipt && (
+      <div className={classes.containerItem}>
+        {/* Header */}
         <Card className={classes.card}>
           <CardHeader
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-                <Certificate24Regular />
-                <Text weight="semibold">Verification Results</Text>
-                {verificationResult && getStatusIcon(verificationResult.isValid, verificationResult.isCompleted)}
+                <DocumentSearch24Regular />
+                <Text weight="semibold" size={500}>Receipt Verification</Text>
               </div>
             }
+            description={
+              <Text>
+                Verify that a transaction receipt matches the data in the ledger by validating the Merkle tree proof.
+              </Text>
+            }
+            />
+        </Card>
+
+        {/* Input Section */}
+        <Card className={classes.card}>
+          <CardHeader
+            header={<Text weight="semibold">Receipt Input</Text>}
           />
           <CardPreview>
-            <div className={classes.resultsSection}>
-              {verificationResult && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-                    <Text weight="semibold">Status:</Text>
-                    {getStatusBadge(verificationResult.isValid, verificationResult.isCompleted)}
-                  </div>
+            <div className={classes.inputSection}>
+              <Field
+                label="Write Receipt JSON"
+                hint="Paste the complete write receipt JSON here"
+              >
+                <Textarea
+                  value={receiptText}
+                  onChange={(_, data) => setReceiptText(data.value)}
+                  placeholder={`Paste your receipt JSON here or try this example:\\n\\n${exampleReceipt}`}
+                  rows={8}
+                  style={{ fontFamily: tokens.fontFamilyMonospace, width: '100%' }}
+                />
+              </Field>
 
-                  <div className={classes.resultGrid}>
-                    <Card className={classes.resultCard}>
-                      <Text weight="semibold" block>Transaction Digest</Text>
-                      <div className={classes.hashText}>
-                        {verificationResult.txDigest || 'Not calculated'}
-                      </div>
-                    </Card>
+              <Field
+                label="Network Certificate"
+                hint="Paste the network certificate (PEM format)"
+              >
+                <Textarea
+                  value={networkCertText}
+                  onChange={(_, data) => setNetworkCertText(data.value)}
+                  placeholder="-----BEGIN CERTIFICATE-----\\n...\\n-----END CERTIFICATE-----"
+                  rows={8}
+                  style={{ fontFamily: tokens.fontFamilyMonospace, width: '100%' }}
+                />
+              </Field>
 
-                    <Card className={classes.resultCard}>
-                      <Text weight="semibold" block>Calculated Root</Text>
-                      <div className={classes.hashText}>
-                        {verificationResult.calculatedRoot || 'Not calculated'}
-                      </div>
-                    </Card>
+              {parseError && (
+                <MessageBar intent="error">
+                  <MessageBarBody>{parseError}</MessageBarBody>
+                </MessageBar>
+              )}
 
-                    <Card className={classes.resultCard}>
-                      <Text weight="semibold" block>Merkle Path Length</Text>
-                      <Text size={400}>{verificationResult.merklePath.length} steps</Text>
-                    </Card>
-
-                    <Card className={classes.resultCard}>
-                      <Text weight="semibold" block>Root Match</Text>
-                      <Badge style={{ 
-                        color: verificationResult.rootsMatch 
-                          ? tokens.colorPaletteGreenForeground1 
-                          : tokens.colorPaletteRedForeground1 
-                      }}>
-                        {verificationResult.rootsMatch ? 'MATCH' : 'NO MATCH'}
-                      </Badge>
-                    </Card>
-
-                    {verificationResult.ledgerComparison && (
-                      <Card className={classes.resultCard}>
-                        <Text weight="semibold" block>Ledger Status</Text>
-                        <Badge style={{ 
-                          color: verificationResult.ledgerComparison.foundInLedger 
-                            ? tokens.colorPaletteGreenForeground1 
-                            : tokens.colorPaletteRedForeground1 
-                        }}>
-                          {verificationResult.ledgerComparison.foundInLedger ? 'FOUND' : 'NOT FOUND'}
-                        </Badge>
-                      </Card>
-                    )}
-                  </div>
-
-                  {verificationResult.merklePath.length > 0 && (
-                    <div>
-                      <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalS }}>
-                        Merkle Path
-                      </Text>
-                      {verificationResult.merklePath.map((hash, index) => (
-                        <div key={index} style={{ marginBottom: tokens.spacingVerticalXS }}>
-                          <Text size={300}>Step {index + 1}:</Text>
-                          <div className={classes.hashText}>{hash}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {!verificationResult.isValid && verificationResult.isCompleted && (
-                    <MessageBar intent="warning">
-                      <MessageBarBody>
-                        The receipt verification failed. This could mean the receipt is invalid, 
-                        the network certificate is incorrect, or the transaction was not properly recorded.
-                      </MessageBarBody>
-                    </MessageBar>
-                  )}
-
-                  {verificationResult.isValid && verificationResult.isCompleted && (
-                    <MessageBar intent="success">
-                      <MessageBarBody>
-                        The receipt is cryptographically valid! The Merkle proof successfully validates 
-                        the transaction against the provided certificate.
-                      </MessageBarBody>
-                    </MessageBar>
-                  )}
-                </>
+              {error && (
+                <MessageBar intent="error">
+                  <MessageBarBody>Verification Error: {error}</MessageBarBody>
+                </MessageBar>
               )}
             </div>
           </CardPreview>
+          <CardFooter>
+            <Button
+              appearance="primary"
+              icon={<DocumentSearch24Regular />}
+              onClick={parseReceipt}
+              disabled={!receiptText.trim()}
+            >
+              Parse & Verify Receipt
+            </Button>
+
+            <Button
+              appearance="secondary"
+              onClick={clearAll}
+            >
+              Clear All
+            </Button>
+
+            {isLoading && <Spinner size="tiny" />}
+          </CardFooter>
         </Card>
-      )}
+
+        {/* Results Section */}
+        {parsedReceipt && (
+          <Card className={classes.card}>
+            <CardHeader
+              header={
+                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                  <Certificate24Regular />
+                  <Text weight="semibold">Verification Results</Text>
+                  {verificationResult && getStatusIcon(verificationResult.isValid, verificationResult.isCompleted)}
+                </div>
+              }
+            />
+            <CardPreview>
+              <div className={classes.resultsSection}>
+                {verificationResult && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+                      <Text weight="semibold">Status:</Text>
+                      {getStatusBadge(verificationResult.isValid, verificationResult.isCompleted)}
+                    </div>
+
+                    <div className={classes.resultGrid}>
+                      <Card className={classes.resultCard}>
+                        <Text weight="semibold" block>Transaction Digest</Text>
+                        <div className={classes.hashText}>
+                          {verificationResult.txDigest || 'Not calculated'}
+                        </div>
+                      </Card>
+
+                      <Card className={classes.resultCard}>
+                        <Text weight="semibold" block>Calculated Root</Text>
+                        <div className={classes.hashText}>
+                          {verificationResult.calculatedRoot || 'Not calculated'}
+                        </div>
+                      </Card>
+
+                      <Card className={classes.resultCard}>
+                        <Text weight="semibold" block>Merkle Path Length</Text>
+                        <Text size={400}>{verificationResult.merklePath.length} steps</Text>
+                      </Card>
+
+                      <Card className={classes.resultCard}>
+                        <Text weight="semibold" block>Root Match</Text>
+                        <Badge style={{ 
+                          color: verificationResult.rootsMatch 
+                            ? tokens.colorPaletteGreenForeground1 
+                            : tokens.colorPaletteRedForeground1 
+                        }}>
+                          {verificationResult.rootsMatch ? 'MATCH' : 'NO MATCH'}
+                        </Badge>
+                      </Card>
+
+                      {verificationResult.ledgerComparison && (
+                        <Card className={classes.resultCard}>
+                          <Text weight="semibold" block>Ledger Status</Text>
+                          <Badge style={{ 
+                            color: verificationResult.ledgerComparison.foundInLedger 
+                              ? tokens.colorPaletteGreenForeground1 
+                              : tokens.colorPaletteRedForeground1 
+                          }}>
+                            {verificationResult.ledgerComparison.foundInLedger ? 'FOUND' : 'NOT FOUND'}
+                          </Badge>
+                        </Card>
+                      )}
+                    </div>
+
+                    {verificationResult.merklePath.length > 0 && (
+                      <div>
+                        <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalS }}>
+                          Merkle Path
+                        </Text>
+                        {verificationResult.merklePath.map((hash, index) => (
+                          <div key={index} style={{ marginBottom: tokens.spacingVerticalXS }}>
+                            <Text size={300}>Step {index + 1}:</Text>
+                            <div className={classes.hashText}>{hash}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!verificationResult.isValid && verificationResult.isCompleted && (
+                      <MessageBar intent="warning">
+                        <MessageBarBody>
+                          The receipt verification failed. This could mean the receipt is invalid, 
+                          the network certificate is incorrect, or the transaction was not properly recorded.
+                        </MessageBarBody>
+                      </MessageBar>
+                    )}
+
+                    {verificationResult.isValid && verificationResult.isCompleted && (
+                      <MessageBar intent="success">
+                        <MessageBarBody>
+                          The receipt is cryptographically valid! The Merkle proof successfully validates 
+                          the transaction against the provided certificate.
+                        </MessageBarBody>
+                      </MessageBar>
+                    )}
+                  </>
+                )}
+              </div>
+            </CardPreview>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

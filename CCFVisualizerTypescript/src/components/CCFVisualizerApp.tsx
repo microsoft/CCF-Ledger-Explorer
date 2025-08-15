@@ -17,6 +17,7 @@ import {
   Document24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
+  DocumentAdd24Regular,
 } from '@fluentui/react-icons';
 import { 
   useStats, 
@@ -26,7 +27,7 @@ import {
   useFileTransactionsCount,
   useStorageQuota
 } from '../hooks/use-ccf-data';
-import { FileUploadArea } from './FileUploadArea';
+import { AddFilesWizard } from './AddFilesWizard';
 import { LedgerVisualization } from './LedgerVisualization';
 import { TransactionDataGrid } from './TransactionDataGrid';
 import type { TransactionType } from '../utils/transaction-classification';
@@ -218,6 +219,7 @@ export const CCFVisualizerApp: React.FC = () => {
   const { data: stats } = useStats();
   const { data: ledgerFiles } = useLedgerFiles();
   const { isUploading, uploadError } = useFileDrop();
+  const [showUploadDialog, setShowUploadDialog] = React.useState(false);
   const { data: storageInfo } = useStorageQuota();
   
   // Auto-select the first file when files are loaded
@@ -370,7 +372,20 @@ export const CCFVisualizerApp: React.FC = () => {
         )}
 
         <div className={styles.centerContent}>
-          <FileUploadArea />
+          {/* Upload Files Button */}
+          <Button
+            size='large'
+            appearance="primary"
+            icon={<DocumentAdd24Regular />}
+            onClick={() => setShowUploadDialog(true)}
+          >
+            Add Files
+          </Button>
+
+          <AddFilesWizard 
+            open={showUploadDialog} 
+            onOpenChange={setShowUploadDialog}
+          />
         </div>
       </div>
     );

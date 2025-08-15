@@ -12,7 +12,6 @@ const useStyles = makeStyles({
     gridTemplateRows: 'auto 1fr auto',
     gridTemplateColumns: 'auto 1fr auto',
     height: '100vh',
-    overflowY: 'hidden',
     ...shorthands.gap('10px'),
   },
   top: { 
