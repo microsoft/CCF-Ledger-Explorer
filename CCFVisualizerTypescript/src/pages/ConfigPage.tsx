@@ -60,7 +60,7 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    overflow: 'hidden',
+    overflowX: 'hidden',
   },
   configHeader: {
     display: 'flex',
@@ -75,20 +75,23 @@ const useStyles = makeStyles({
   },
 });
 
-interface ChatConfig {
+interface AppConfig {
   baseUrl: string;
   systemPrompt: string;
+  ctsProxyUrl: string;
 }
 
 // Custom hook for managing configuration state
 export const useConfig = () => {
-  const [config, setConfig] = useState<ChatConfig>({
+  const [config, setConfig] = useState<AppConfig>({
     baseUrl: localStorage.getItem('chat_base_url') || '',
     systemPrompt: localStorage.getItem('chat_system_prompt') || defaultSystemPrompt,
+    ctsProxyUrl: localStorage.getItem('cts_proxy_url') || '',
   });
 
   useEffect(() => {
     localStorage.setItem('chat_base_url', config.baseUrl);
+    localStorage.setItem('cts_proxy_url', config.ctsProxyUrl);
     if (config.systemPrompt) {
       localStorage.setItem('chat_system_prompt', config.systemPrompt);
     } else {
@@ -265,7 +268,7 @@ export const ConfigPage: React.FC = () => {
               Configuration for the AI chat assistant. Set the base URL for the OpenAI API and the system prompt.
             </Text>
 
-            <Field label="Base URL">
+            <Field label="Base URL for chat responses (OpenAI response API)">
               <Input
                 type="url"
                 placeholder="https://xyz.cognitiveservices.azure.com/"
@@ -280,6 +283,30 @@ export const ConfigPage: React.FC = () => {
                 rows={10}
                 value={config.systemPrompt}
                 onChange={(_, data) => setConfig(prev => ({ ...prev, systemPrompt: data.value }))} />
+            </Field>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            header={
+              <div className={styles.configHeader}>
+                <Settings24Regular />
+                <Text weight="semibold">CTS proxy configuration</Text>
+              </div>
+            }
+          />
+          <div className={styles.configContent}>
+            <Text size={200}>
+              Configure CTS file proxy as it might use self signed TLS certs
+            </Text>
+
+            <Field label="Proxy URL for ledger file downloads">
+              <Input
+                type="url"
+                placeholder="https://foo.bar.com/proxy/"
+                value={config.ctsProxyUrl}
+                onChange={(_, data) => setConfig(prev => ({ ...prev, ctsProxyUrl: data.value }))} />
             </Field>
           </div>
         </Card>

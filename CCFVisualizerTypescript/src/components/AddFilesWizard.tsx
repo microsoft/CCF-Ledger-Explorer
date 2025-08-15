@@ -20,6 +20,8 @@ import {
 } from '@fluentui/react-icons';
 import { FileUploadArea } from './FileUploadArea';
 import { LedgerBackupView } from './LedgerBackupView';
+import { CtsLedgerImportView } from './CtsLedgerImportView';
+
 
 const useStyles = makeStyles({
   wizardDialog: {
@@ -193,13 +195,11 @@ Please follow the following:
 
       case 'cts':
         return {
-          title: 'Core Transparency Service',
+          title: 'Code Transparency Service',
           content: `
-### About Core Transparency Service
+### About Code Transparency Service
 
-Core Transparency Service provides transparency and auditability for software supply chain security, maintaining tamper-evident logs of software artifacts.
-
-### Coming Soon
+Code Transparency Service provides transparency and auditability for software supply chain security, maintaining tamper-evident logs of software artifacts.
           `.trim(),
         };
       case 'local':
@@ -256,19 +256,7 @@ The system will check for:
       case 'azure':
         return <LedgerBackupView />;
       case 'cts':
-        return (
-          <div className={styles.emptyTabContent}>
-            <div className={styles.comingSoonIcon}>
-              { <ShieldCheckmarkRegular />}
-            </div>
-            <Text size={500} weight="semibold">
-              Coming Soon
-            </Text>
-            <Caption1>
-              This integration is under development and will be available in a future release.
-            </Caption1>
-          </div>
-        );
+        return <CtsLedgerImportView />;
       case 'local':
       default:
         return <FileUploadArea />;
@@ -303,7 +291,7 @@ The system will check for:
                 Azure Confidential Ledger
               </Tab>
               <Tab value="cts" icon={<ShieldCheckmarkRegular />}>
-                Core Transparency Service
+                Code Transparency Service
               </Tab>
               <Tab value="local" icon={<FolderRegular />}>
                 Local Files

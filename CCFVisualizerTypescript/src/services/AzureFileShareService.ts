@@ -40,15 +40,6 @@ export class AzureFileShareService {
 
       }
 
-      // Sort files alphabetically
-    // files.sort((a, b) => {
-    //     const extractStartTran = (filename: string): number => {
-    //         const match = filename.match(/^ledger_(\d+)-\d+\.committed$/);
-    //         return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
-    //     };
-
-    //     return extractStartTran(a.name) - extractStartTran(b.name);
-    //     });
     const validation = validateLedgerSequence([], files);
     if (validation.isValid) {
       return validation.sortedFiles;
@@ -91,23 +82,7 @@ export class AzureFileShareService {
                 console.error(`Failed to download file: ${downloadFile.filename}`);
                 continue; // Skip if blob is null
             }
-            const file = await this.blobToString(blob, downloadFile.filename);
-            //console.log("Downloaded file content:", text);
-            // const chunks: Uint8Array[] = [];
-            // const reader = downloadResponse.readableStreamBody?.getReader();
-
-            // if (!reader) {
-            //   console.error("No readable stream returned.");
-            // }
-
-            
-            // let result = await reader.read();
-            // while (!result.done) {
-            // chunks.push(result.value);
-            // result = await reader.read();
-            // }
-
-            // const blob = new Blob(chunks, { type: downloadResponse.contentType || "application/octet-stream" });
+            const file = await this.blobToFile(blob, downloadFile.filename);
             files.push(file);
 
         }
@@ -121,7 +96,7 @@ export class AzureFileShareService {
   }
 
 
-async blobToString(blob: Blob, fileName: string): Promise<File> {
+async blobToFile(blob: Blob, fileName: string): Promise<File> {
     const file = new File([blob], fileName, { type: blob.type });
     return file;
 

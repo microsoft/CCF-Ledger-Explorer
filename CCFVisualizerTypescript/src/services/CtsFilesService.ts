@@ -1,0 +1,204 @@
+import type { LedgerFileInfo } from '../utils/ledger-validation';
+import { parseLedgerFilename, validateLedgerSequence } from '../utils/ledger-validation';
+
+// NGINX directory listing response interfaces
+interface NginxFileEntry {
+  name: string;
+  type: 'file' | 'directory';
+  mtime: string;
+  size?: number;
+}
+
+type NginxDirectoryResponse = NginxFileEntry[];
+
+// File info interface for CtsClient
+interface FileInfo {
+  name: string;
+  kind: 'file' | 'directory';
+  url: string;
+}
+
+// Download response interface
+interface DownloadResponse {
+  blobBody: Promise<Blob>;
+}
+
+interface ICtsClient {
+  listAllLedgerFiles(): AsyncGenerator<FileInfo>;
+  downloadFile(filename: string): Promise<DownloadResponse>;
+}
+
+// CtsClient implementation using fetch to access NGINX-indexed ledger files
+class CtsClient implements ICtsClient {
+  private ledgerFilesUrl: string;
+  private proxyUrl: string | null;
+
+  constructor(domain: string, proxyUrl?: string) {
+    // Prefix domain with 'ledger-files-' and construct base URL
+    this.ledgerFilesUrl = `https://ledger-files-${domain}/ledger/`;
+    this.proxyUrl = proxyUrl || null;
+  }
+
+  async *listAllLedgerFiles(): AsyncGenerator<FileInfo> {
+    yield* this.listFilesRecursively('/');
+  }
+
+  private async *listFilesRecursively(path: string): AsyncGenerator<FileInfo> {
+    try {
+      const targetUrl = `${this.ledgerFilesUrl}${path.startsWith('/') ? path.slice(1) : path}`;
+      const fetchUrl = this.buildFetchUrl(targetUrl);
+      
+      const response = await fetch(fetchUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to list files at ${path}: ${response.status} ${response.statusText}`);
+      }
+
+      const data: NginxDirectoryResponse = await response.json();
+
+      // check if response is array
+      if (!Array.isArray(data)) {
+        throw new Error(`Unexpected response format at ${path}: ${JSON.stringify(data)}`);
+      }
+
+      for (const entry of data) {
+        // Skip parent directory entries
+        if (entry.name === '../' || entry.name === './') {
+          continue;
+        }
+
+        const fullPath = path === '/' ? entry.name : `${path}/${entry.name}`;
+        const fileInfo: FileInfo = {
+          name: entry.name,
+          kind: entry.type,
+          url: `${this.ledgerFilesUrl}${fullPath.startsWith('/') ? fullPath.slice(1) : fullPath}`,
+        };
+
+        if (entry.type === 'file') {
+          yield fileInfo;
+        } else if (entry.type === 'directory') {
+          // Recursively search directories
+          yield* this.listFilesRecursively(fullPath);
+        }
+      }
+    } catch (error) {
+      console.error(`Error listing files in ${path}:`, error);
+      throw new Error(`Failed to access directory ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async downloadFile(filename: string): Promise<DownloadResponse> {
+    try {
+      const targetUrl = `${this.ledgerFilesUrl}${filename}`;
+      const fetchUrl = this.buildFetchUrl(targetUrl);
+      
+      const response = await fetch(fetchUrl);
+
+      if (!response.ok) {
+        throw new Error(`Failed to download file ${filename}: ${response.status} ${response.statusText}`);
+      }
+
+      return {
+        blobBody: response.blob(),
+      };
+    } catch (error) {
+      console.error(`Error downloading file ${filename}:`, error);
+      throw new Error(`Failed to download file ${filename}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private buildFetchUrl(targetUrl: string): string {
+    if (this.proxyUrl) {
+      // Send the target URL as a query parameter to the proxy
+      const proxyFetchUrl = new URL(this.proxyUrl);
+      proxyFetchUrl.searchParams.set('url', targetUrl);
+      return proxyFetchUrl.toString();
+    } else {
+      // Direct access without proxy
+      return targetUrl;
+    }
+  }
+}
+
+export class CtsFilesService {
+  private ctsClient: ICtsClient | null = null;
+
+  async initialize(domain: string, proxyUrl?: string): Promise<void> {
+    try {
+      this.ctsClient = new CtsClient(domain, proxyUrl);
+    } catch (error) {
+      console.error('Initialization error:', error);
+      throw new Error(
+        'Failed to initialize file share client. Please ensure your SAS token is valid and has Read/List permissions.'
+      );
+    }
+  }
+
+  async listLedgerFiles(): Promise<LedgerFileInfo[]> {
+    if (!this.ctsClient) {
+      throw new Error('File share client not initialized');
+    }
+
+    const files: LedgerFileInfo[] = [];
+
+    for await (const f of this.ctsClient.listAllLedgerFiles()) {
+      if (f.kind === "file" && f.name.endsWith('.committed')) {
+        files.push({
+          ...parseLedgerFilename(f.name)
+        });
+      }
+    }
+    const validation = validateLedgerSequence([], files);
+    if (validation.isValid) {
+      return validation.sortedFiles;
+    }
+    else {
+      return [];
+    }
+  }
+
+  async downloadLedgerFiles(ledgerFile: LedgerFileInfo): Promise<{ files: File[]; filesDownloaded: LedgerFileInfo[]; }> {
+    if (!this.ctsClient) {
+      throw new Error('File share client not initialized');
+    }
+
+    try {
+      const ledgerFileListFromStorage = await this.listLedgerFiles();
+      if (ledgerFileListFromStorage.length === 0) {
+        throw new Error('No ledger files found in the file share');
+      }
+      // Filter for files to download from storage
+      const ledgerFileToDownloadFromStorage = ledgerFileListFromStorage.filter(file => file.endNo <= ledgerFile.endNo);
+      const files: File[] = [];
+      const filesDownloaded: LedgerFileInfo[] = [];
+      for (const downloadFile of ledgerFileToDownloadFromStorage) {
+        filesDownloaded.push(downloadFile);
+        console.log(`Downloading file: ${downloadFile.filename}`);
+        const downloadResponse = await this.ctsClient.downloadFile(downloadFile.filename);
+        const blob = await downloadResponse.blobBody;
+        if (!blob) {
+          console.error(`Failed to download file: ${downloadFile.filename}`);
+          continue; // Skip if blob is null
+        }
+        const file = await this.blobToFile(blob, downloadFile.filename);
+        files.push(file);
+      }
+      return { files, filesDownloaded };
+    }
+
+    catch (error) {
+      console.error('No Files to download in the File share', error);
+      throw new Error('No Files to download in the File share');
+    }
+  }
+
+  async blobToFile(blob: Blob, fileName: string): Promise<File> {
+    const file = new File([blob], fileName, { type: blob.type });
+    return file;
+  }
+
+}
