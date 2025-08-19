@@ -16,6 +16,7 @@ import {
   ShieldCheckmarkRegular,
   DocumentSearch24Regular,
   Settings24Regular,
+  Edit24Regular,
 } from '@fluentui/react-icons';
 import { 
   useStats,
@@ -59,9 +60,16 @@ const useStyles = makeStyles({
 interface MenuBarProps {
   onToggleTheme: () => void;
   isDarkMode: boolean;
+  hasActiveChat?: boolean;
+  onNewConversation?: (() => void) | null;
 }
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ 
+  onToggleTheme, 
+  isDarkMode, 
+  hasActiveChat = false,
+  onNewConversation 
+}) => {
   const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,7 +98,9 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
   };
 
   const handleTabChange = (tabValue: string) => {
-    if (tabValue === 'files') {
+    if (tabValue === 'new-conversation') {
+      onNewConversation?.();
+    } else if (tabValue === 'files') {
       navigate('/files');
     } else if (tabValue === 'tables') {
       navigate('/tables');
@@ -119,7 +129,12 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
       <div className={styles.navigation}>
         {/* Navigation Tabs */}
         <div className={styles.navigationTabs}>
-          <TabList selectedValue={getActiveTab()} onTabSelect={(_, data) => handleTabChange(data.value as string)}>
+          <TabList onTabSelect={(_, data) => handleTabChange(data.value as string)}>
+            {hasActiveChat && location.pathname.startsWith('/chat') && (
+              <Tab value="new-conversation" icon={<Edit24Regular />}>
+                New Conversation
+              </Tab>
+            )}
             <Tab value="chat" icon={<Bot24Regular />}>
               Chat
             </Tab>

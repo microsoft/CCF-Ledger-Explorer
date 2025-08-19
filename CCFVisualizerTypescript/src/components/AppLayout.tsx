@@ -12,7 +12,6 @@ const useStyles = makeStyles({
     gridTemplateRows: 'auto 1fr auto',
     gridTemplateColumns: 'auto 1fr auto',
     height: '100vh',
-    ...shorthands.gap('10px'),
   },
   top: { 
     gridArea: 'top',
@@ -24,6 +23,7 @@ const useStyles = makeStyles({
     gridArea: 'main',
     overflow: 'hidden',
     minHeight: 0,
+    ...shorthands.margin('0px','0px','150px'),
   },
   right: { 
     gridArea: 'right',

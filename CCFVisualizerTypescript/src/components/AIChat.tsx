@@ -92,6 +92,8 @@ interface ChatMessage {
 
 interface AIChatProps {
   database: CCFDatabase;
+  onChatStateChange?: (hasActiveChat: boolean) => void;
+  onRegisterClearChat?: (clearFn: (() => void) | null) => void;
 }
 
 const useStyles = makeStyles({
@@ -102,6 +104,37 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
+    transition: 'all 0.5s ease-in-out',
+  },
+  containerWithMessages: {
+    display: 'flex',
+    height: '100vh',
+    minHeight: 0,
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    transition: 'all 0.5s ease-in-out',
+  },
+  sageTitle: {
+    fontSize: '48px',
+    fontWeight: '600',
+    color: tokens.colorNeutralForeground1,
+    marginBottom: '32px',
+    textAlign: 'center',
+    opacity: 1,
+    transform: 'translateY(0)',
+    transition: 'all 0.5s ease-in-out',
+  },
+  sageTitleHidden: {
+    fontSize: '48px',
+    fontWeight: '600',
+    color: tokens.colorNeutralForeground1,
+    marginBottom: '32px',
+    textAlign: 'center',
+    opacity: 0,
+    transform: 'translateY(-50px)',
+    transition: 'all 0.5s ease-in-out',
+    pointerEvents: 'none',
   },
   chatPane: {
     flex: 1,
@@ -110,7 +143,7 @@ const useStyles = makeStyles({
     minWidth: 0,
     minHeight: 0,
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '830px',
     height: '100vh',
   },
   chatCard: {
@@ -120,20 +153,6 @@ const useStyles = makeStyles({
     minHeight: 0,
     height: '100vh',
     backgroundColor: tokens.colorNeutralBackground1,
-  },
-  chatHeader: {
-    position: 'fixed',
-    top: 0,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '100%',
-    maxWidth: '800px',
-    zIndex: 1000,
-    display: 'block',
-    ...shorthands.gap('8px'),
-    ...shorthands.padding('16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
   },
   messagesArea: {
     display: 'flex',
@@ -232,17 +251,127 @@ const useStyles = makeStyles({
   },
   inputArea: {
     position: 'fixed',
-    bottom: 0,
+    bottom: '20px',
     left: '50%',
     transform: 'translateX(-50%)',
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '830px',
     zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
     ...shorthands.padding('10px', '16px'),
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('1px', 'solid', tokens.colorNeutralStroke2),
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all 0.5s ease-in-out',
+  },
+  inputAreaCentered: {
+    position: 'relative',
+    bottom: 'auto',
+    left: 'auto',
+    transform: 'none',
+    width: '100%',
+    maxWidth: '830px',
+    zIndex: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.padding('10px', '16px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all 0.5s ease-in-out',
+    marginBottom: '24px',
+  },
+
+  //ending area
+  inputAreaAnimating: {
+    position: 'fixed',
+    left: 'auto',
+    top: '47%',
+    transform: 'translateY(-50%)',
+    width: '100%',
+    maxWidth: '830px',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.padding('10px', '16px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  },
+
+  inputAreaAnimatingToBottom: {
+    position: 'fixed',
+    left: 'auto',
+    top: '47%',
+    bottom: '20px',
+    transform: 'translateY(80%)',
+    width: '100%',
+    maxWidth: '830px',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.padding('10px', '16px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  },
+
+  // Reverse animation classes (bottom to center)
+  inputAreaAnimatingToCenter: {
+    position: 'fixed',
+    left: 'auto',
+    top: '47%',
+    //transform: 'translateY(70%)',
+    width: '100%',
+    maxWidth: '830px',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.padding('10px', '16px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all .8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  },
+
+  inputAreaAnimatingToCenterFinal: {
+    position: 'fixed',
+    left: 'auto',
+    top: '47%',
+    bottom: 0,
+    transform: 'translateY(-12%)',
+    width: '100%',
+    maxWidth: '830px',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    ...shorthands.padding('10px', '16px'),
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
+    transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  },
+  
+  starterTemplates: {
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    ...shorthands.gap('12px'),
+    width: '100%',
+    maxWidth: '830px',
+    opacity: 1,
+    transform: 'translateY(0)',
+    transition: 'all 0.5s ease-in-out',
+    justifyContent: 'center',
+  },
+  starterTemplatesHidden: {
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    ...shorthands.gap('12px'),
+    width: '100%',
+    maxWidth: '830px',
+    opacity: 0,
+    transform: 'translateY(50px)',
+    transition: 'all 0.5s ease-in-out',
+    pointerEvents: 'none',
   },
   chatInputContainer: {
     position: 'relative',
@@ -325,7 +454,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const AIChat: React.FC<AIChatProps> = ({ database }) => {
+export const AIChat: React.FC<AIChatProps> = ({ 
+  database, 
+  onChatStateChange, 
+  onRegisterClearChat 
+}) => {
   const styles = useStyles();
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -342,6 +475,10 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
 
   // Add verification hooks
   const verification = useVerification();
+  const hasMessages = messages.length > 0;
+  
+  // Animation state for input area transition
+  const [inputAnimationClass, setInputAnimationClass] = useState('');
   
   // Force refresh checkpoints when component mounts
   useEffect(() => {
@@ -359,27 +496,40 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
     setTimeout(refreshCheckpointsOnMount, 1000);
   }, [verification.refreshCheckpoints]);
 
+  useEffect(() => {
+    onChatStateChange?.(hasMessages);
+  }, [hasMessages, onChatStateChange]);
+
   // Ensure page starts at the top on initial load
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
-  // Auto-scroll to position latest message optimally when new messages are added
+  // Auto-scroll to always keep the most recent user message at the top of the screen
   useEffect(() => {
     if (messages.length > 0) {
       // Use a small delay to ensure DOM is updated
       setTimeout(() => {
-        const messageElements = document.querySelectorAll('[data-message-role]');
-        if (messageElements.length > 0) {
-          const latestMessageElement = messageElements[messageElements.length - 1] as HTMLElement;
-          // Scroll to ensure the latest message is visible
-          latestMessageElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start',
-            inline: 'nearest'
-          });
+        // Find the most recent user message and keep it at the top
+        const userMessages = messages.filter(m => m.role === 'user');
+        
+        if (userMessages.length > 0) {
+          const lastUserMessage = userMessages[userMessages.length - 1];
+          const messageElements = document.querySelectorAll('[data-message-role]');
+          const userMessageElement = Array.from(messageElements).find(el => 
+            el.getAttribute('data-message-id') === lastUserMessage.id
+          ) as HTMLElement;
+          
+          if (userMessageElement) {
+            // Always scroll to show the most recent user message at the top
+            userMessageElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }
         }
-      }, 50); // Small delay to ensure DOM update
+      }, 150); // Slightly longer delay to ensure content is fully rendered
     }
   }, [messages]);
 
@@ -720,6 +870,15 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
   const handleSendMessage = async (optionalMessage?: string) => {
     if (isLoading || (!optionalMessage && !currentMessage.trim())) return;
 
+    // Start animation if this is the first message
+    if (messages.length === 0) {
+      setInputAnimationClass('animating');
+      // After a brief moment, transition to the bottom position
+      setTimeout(() => {
+        setInputAnimationClass('animatingToBottom');
+      }, 50); // Small delay to allow initial state to render
+    }
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -803,10 +962,24 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
     handleSendMessage(example);
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setError(null);
+  const clearChat = () => {      
+      // After a brief moment, transition to center position
+      setTimeout(() => {
+        setInputAnimationClass('animatingToCenterFinal');
+        // After animation completes, reset to normal state
+        setTimeout(() => {
+          setMessages([]);
+          setError(null);
+          setInputAnimationClass('');
+        }, 800); // Match the CSS transition duration
+      }, 50);
   };
+
+  // Register clearChat function with parent component
+  useEffect(() => {
+    onRegisterClearChat?.(() => clearChat);
+    return () => onRegisterClearChat?.(null);
+  }, [onRegisterClearChat]);
 
   const handleDropDatabase = async () => {
     try {
@@ -844,29 +1017,169 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
 
   return (
     <>
-      <div className={styles.container}>
-        <div className={styles.chatPane}>
-        
-        {/* Fixed Header */}
-        { error || messages.length > 0 ? (
-          <div className={styles.chatHeader}>
-            <Button onClick={clearChat} appearance="outline">
-              New conversation
-            </Button>
+      <div className={hasMessages ? styles.containerWithMessages : styles.container}>
+        {/* Sage Title - visible when no messages */}
+        {!hasMessages && (
+          <div className={styles.sageTitle}>
+            Sage
           </div>
-        ) : null }
+        )}
 
-        {/* Messages Area */}
-        <div 
-          className={styles.messagesArea}
-          style={{
-            paddingTop: (error || messages.length > 0) ? '80px' : '16px'
-          }}
-        >
+        {/* Input Area - animated transition from center to bottom and back */}
+        <div className={
+          inputAnimationClass === 'animating' ? styles.inputAreaAnimating :
+          inputAnimationClass === 'animatingToBottom' ? styles.inputAreaAnimatingToBottom :
+          inputAnimationClass === 'animatingToCenter' ? styles.inputAreaAnimatingToCenter :
+          inputAnimationClass === 'animatingToCenterFinal' ? styles.inputAreaAnimatingToCenterFinal :
+          hasMessages ? styles.inputArea : styles.inputAreaCentered
+        }>
+          {error && (
+            <div className={styles.errorContainer}>
+              <MessageBar intent="error">
+                {error}
+              </MessageBar>
+            </div>
+          )}
+          
+          <div className={styles.chatInputContainer}>
+            {/* Text input on top */}
+            <div className={styles.inputTextareaContainer}>
+              <textarea
+                ref={textareaRef}
+                placeholder="Message Sage..."
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={isLoading}
+                className={styles.inputTextarea}
+                rows={1}
+              />
+            </div>
+
+            {/* Buttons row below */}
+            <div className={styles.buttonsRow}>
+              {/* Plus button with dropdown on left */}
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button
+                    appearance="subtle"
+                    icon={<Add24Regular />}
+                    className={styles.plusButton}
+                  />
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem
+                      icon={<DocumentAdd24Regular />}
+                      onClick={() => setShowUploadDialog(true)}
+                    >
+                      Add Files
+                    </MenuItem>
+                    <MenuItem
+                      icon={<DatabaseArrowDownRegular />}
+                      onClick={() => setShowDropDbDialog(true)}
+                    >
+                      Drop DB
+                    </MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+
+              {/* Send button on right */}
+              <Button
+                appearance="primary"
+                icon={<Send24Regular />}
+                onClick={() => handleSendMessage()}
+                disabled={!currentMessage.trim() || isLoading || !config.baseUrl}
+                className={styles.sendButton}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Starter templates - visible when no messages, positioned under input area */}
+        {!hasMessages && (
+          <div className={styles.starterTemplates}>
+            <CompoundButton
+              icon={<ChatAddRegular />}
+              secondaryContent="How does MAA's attestation work?"
+              appearance="transparent"
+              onClick={() => startFromExample("How does MAA's attestation work?")}
+            >
+              Azure Attestation
+            </CompoundButton>
+
+            <CompoundButton
+              icon={<ChatAddRegular />}
+              secondaryContent="How can I trust MAA?"
+              appearance="transparent"
+              onClick={() => startFromExample("How can I trust MAA?")}
+            >
+              Azure Attestation
+            </CompoundButton>
+
+            <CompoundButton
+              icon={<ChatAddRegular />}
+              secondaryContent="Can you verify that MAA is transparent right now?"
+              appearance="transparent"
+              onClick={() => startFromExample("Can you verify that MAA is transparent right now?")}
+            >
+              Transparency
+            </CompoundButton>
+
+            {allTransactionsCount && allTransactionsCount > 0 ? (
+              <>
+                <CompoundButton
+                  icon={<ChatAddRegular />}
+                  secondaryContent="Can you show me the history of MAA builds?"
+                  appearance="transparent"
+                  onClick={() => startFromExample("Can you show me the history of MAA builds?")}
+                >
+                  Transparency
+                </CompoundButton>
+                <CompoundButton
+                  icon={<ChatAddRegular />}
+                  secondaryContent="How many transactions are in the database?"
+                  appearance="transparent"
+                  onClick={() => startFromExample("How many transactions are in the database?")}
+                >
+                  Ledger
+                </CompoundButton>
+                <CompoundButton
+                  icon={<ChatAddRegular />}
+                  secondaryContent="Show me recent transactions"
+                  appearance="transparent"
+                  onClick={() => startFromExample("Show me recent transactions")}
+                >
+                  Ledger
+                </CompoundButton>
+                <CompoundButton
+                  icon={<ChatAddRegular />}
+                  secondaryContent="Find transactions with specific keys"
+                  appearance="transparent"
+                  onClick={() => startFromExample("Find transactions with specific keys")}
+                >
+                  Ledger
+                </CompoundButton>
+              </>
+            ) : null}
+          </div>
+        )}
+
+        {/* Chat Area with Messages - only visible when there are messages */}
+        {hasMessages && (
+          <div className={styles.chatPane}>
+            {/* Messages Area */}
+            <div 
+              className={styles.messagesArea}
+              style={{
+                paddingTop: '20px' // Always add padding when messages exist
+              }}
+            >
 
             {/* Starter templates when no conversation is present */}
             {messages.length === 0 && (
-              <div>
+              <div className={styles.starterTemplates}>
                 <CompoundButton
                   icon={<ChatAddRegular />}
                   secondaryContent="How does MAA’s attestation work?"
@@ -932,7 +1245,7 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
             )}
 
             {messages.map((message) => (
-              <div key={message.id} className={message.role === 'user' ? styles.userMessageContainer : styles.messageContainer} data-message-role={message.role}>
+              <div key={message.id} className={message.role === 'user' ? styles.userMessageContainer : styles.messageContainer} data-message-role={message.role} data-message-id={message.id}>
                 
                 <div className={message.role === 'user' ? styles.userMessageContent : styles.messageContent}>
                   <div className={`${styles.messageBubble} ${message.role === 'user' ? styles.userBubble : styles.assistantBubble}`}>
@@ -1002,121 +1315,54 @@ export const AIChat: React.FC<AIChatProps> = ({ database }) => {
             )}
             
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Add Files Dialog */}
-          <AddFilesWizard 
-            open={showUploadDialog} 
-            onOpenChange={setShowUploadDialog}
-          />
-
-          {/* Drop Database Dialog */}
-          <Dialog open={showDropDbDialog} onOpenChange={(_, data) => setShowDropDbDialog(data.open)}>
-            <DialogSurface>
-              <DialogTitle>Drop Database</DialogTitle>
-              <DialogContent>
-                <DialogBody>
-                  <Body1>
-                    Are you sure you want to drop the entire database? This will:
-                  </Body1>
-                  <ul>
-                    <li>Remove all tables and data completely</li>
-                    <li>Reset the database schema to its initial state</li>
-                    <li>Free up all storage space used by the database</li>
-                  </ul>
-                  <Body1>
-                    This action cannot be undone and will reload the page.
-                  </Body1>
-                </DialogBody>
-                <DialogActions>
-                  <Button 
-                    appearance="secondary"
-                    onClick={() => setShowDropDbDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    appearance="primary"
-                    onClick={() => {
-                      setShowDropDbDialog(false);
-                      handleDropDatabase();
-                    }}
-                  >
-                    Drop Database
-                  </Button>
-                </DialogActions>
-              </DialogContent>
-            </DialogSurface>
-          </Dialog>
-
-        </div>
-      </div>
-
-      {/* Fixed Input Area - Standalone, anchored at bottom center */}
-      <div className={styles.inputArea}>
-        {error && (
-          <div className={styles.errorContainer}>
-            <MessageBar intent="error">
-              {error}
-            </MessageBar>
+            </div>
           </div>
         )}
-        
-        <div className={styles.chatInputContainer}>
-          {/* Text input on top */}
-          <div className={styles.inputTextareaContainer}>
-            <textarea
-              ref={textareaRef}
-              placeholder="Message Sage..."
-              value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
-              onKeyDown={handleKeyPress}
-              disabled={isLoading}
-              className={styles.inputTextarea}
-              rows={1}
-            />
-          </div>
-
-          {/* Buttons row below */}
-          <div className={styles.buttonsRow}>
-            {/* Plus button with dropdown on left */}
-            <Menu>
-              <MenuTrigger disableButtonEnhancement>
-                <Button
-                  appearance="subtle"
-                  icon={<Add24Regular />}
-                  className={styles.plusButton}
-                />
-              </MenuTrigger>
-              <MenuPopover>
-                <MenuList>
-                  <MenuItem
-                    icon={<DocumentAdd24Regular />}
-                    onClick={() => setShowUploadDialog(true)}
-                  >
-                    Add Files
-                  </MenuItem>
-                  <MenuItem
-                    icon={<DatabaseArrowDownRegular />}
-                    onClick={() => setShowDropDbDialog(true)}
-                  >
-                    Drop DB
-                  </MenuItem>
-                </MenuList>
-              </MenuPopover>
-            </Menu>
-
-            {/* Send button on right */}
-            <Button
-              appearance="primary"
-              icon={<Send24Regular />}
-              onClick={() => handleSendMessage()}
-              disabled={!currentMessage.trim() || isLoading || !config.baseUrl}
-              className={styles.sendButton}
-            />
-          </div>
-        </div>
       </div>
+
+      {/* Dialogs */}
+      <AddFilesWizard 
+        open={showUploadDialog} 
+        onOpenChange={setShowUploadDialog}
+      />
+
+      <Dialog open={showDropDbDialog} onOpenChange={(_, data) => setShowDropDbDialog(data.open)}>
+        <DialogSurface>
+          <DialogTitle>Drop Database</DialogTitle>
+          <DialogContent>
+            <DialogBody>
+              <Body1>
+                Are you sure you want to drop the entire database? This will:
+              </Body1>
+              <ul>
+                <li>Remove all tables and data completely</li>
+                <li>Reset the database schema to its initial state</li>
+                <li>Free up all storage space used by the database</li>
+              </ul>
+              <Body1>
+                This action cannot be undone and will reload the page.
+              </Body1>
+            </DialogBody>
+            <DialogActions>
+              <Button 
+                appearance="secondary"
+                onClick={() => setShowDropDbDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                onClick={() => {
+                  setShowDropDbDialog(false);
+                  handleDropDatabase();
+                }}
+              >
+                Drop Database
+              </Button>
+            </DialogActions>
+          </DialogContent>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 };

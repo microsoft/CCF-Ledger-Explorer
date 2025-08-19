@@ -34,7 +34,15 @@ const useStyles = makeStyles({
   },
 });
 
-export const AIPage: React.FC = () => {
+interface AIPageProps {
+  onChatStateChange?: (hasActiveChat: boolean) => void;
+  onRegisterClearChat?: (clearFn: (() => void) | null) => void;
+}
+
+export const AIPage: React.FC<AIPageProps> = ({ 
+  onChatStateChange, 
+  onRegisterClearChat 
+}) => {
   const { data: database, isLoading, error } = useDatabase();
   const styles = useStyles();
 
@@ -65,7 +73,11 @@ export const AIPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        <AIChat database={database} />
+        <AIChat 
+          database={database}
+          onChatStateChange={onChatStateChange}
+          onRegisterClearChat={onRegisterClearChat}
+        />
       </div>
     </div>
   );
