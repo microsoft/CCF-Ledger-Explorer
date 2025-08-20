@@ -71,6 +71,26 @@ export const MenuBar: React.FC<MenuBarProps> = ({
 
   const hasData = stats && (stats.fileCount > 0 || stats.transactionCount > 0);
 
+    const getActiveTab = () => {
+    if (location.pathname.startsWith('/tables')) {
+      return 'tables';
+    } else if (location.pathname.startsWith('/stats')) {
+      return 'stats';
+    } else if (location.pathname.startsWith('/chat')) {
+      return 'chat';
+    } else if (location.pathname.startsWith('/config')) {
+      return 'config';
+    } else if (location.pathname.startsWith('/files')) {
+      return 'files';
+    } else if (location.pathname.startsWith('/verification')) {
+      return 'verification';
+    } else if (location.pathname.startsWith('/write-receipt')) {
+      return 'write-receipt';
+    } else if (location.pathname.startsWith('/config')) {
+      return 'config';
+    }
+  };
+
   const handleTabChange = (tabValue: string) => {
     if (tabValue === 'files') {
       navigate('/files');
