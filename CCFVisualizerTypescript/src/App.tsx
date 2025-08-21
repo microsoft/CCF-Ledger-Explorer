@@ -32,6 +32,10 @@ function App() {
     return savedTheme === 'dark';
   });
   
+  // Chat state management
+  const [hasActiveChat, setHasActiveChat] = useState(false);
+  const [clearChatFunction, setClearChatFunction] = useState<(() => void) | null>(null);
+  
   const currentTheme = isDarkMode ? webDarkTheme : webLightTheme;
 
   // Save theme preference to localStorage
@@ -49,12 +53,24 @@ function App() {
         <Router>
           <GridLayout>
             <GridLayout.Top>
-              <MenuBar onToggleTheme={handleToggleTheme} isDarkMode={isDarkMode} />
+              <MenuBar 
+                onToggleTheme={handleToggleTheme} 
+                isDarkMode={isDarkMode}
+              />
             </GridLayout.Top>
             <GridLayout.Main>
               <Routes>
                 <Route path="/" element={<StartPage />} />
-                <Route path="/chat" element={<AIPage />} />
+                <Route 
+                  path="/chat" 
+                  element={
+                    <AIPage 
+                      onChatStateChange={setHasActiveChat}
+                      onRegisterClearChat={setClearChatFunction}
+                      clearChatFunction={clearChatFunction}
+                    />
+                  } 
+                />
                 <Route path="/files" element={<CCFVisualizerApp />} />
                 <Route path="/tables" element={<TablesPage />} />
                 <Route path="/tables/:tableName" element={<TablesPage />} />

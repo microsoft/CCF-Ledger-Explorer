@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   Button,
@@ -61,15 +61,17 @@ interface MenuBarProps {
   isDarkMode: boolean;
 }
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ 
+  onToggleTheme, 
+  isDarkMode, 
+}) => {
   const styles = useStyles();
   const navigate = useNavigate();
-  const location = useLocation();
   const { data: stats } = useStats();
 
   const hasData = stats && (stats.fileCount > 0 || stats.transactionCount > 0);
 
-  const getActiveTab = () => {
+    const getActiveTab = () => {
     if (location.pathname.startsWith('/tables')) {
       return 'tables';
     } else if (location.pathname.startsWith('/stats')) {
@@ -119,7 +121,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onToggleTheme, isDarkMode }) =
       <div className={styles.navigation}>
         {/* Navigation Tabs */}
         <div className={styles.navigationTabs}>
-          <TabList selectedValue={getActiveTab()} onTabSelect={(_, data) => handleTabChange(data.value as string)}>
+          <TabList onTabSelect={(_, data) => handleTabChange(data.value as string)}>
             <Tab value="chat" icon={<Bot24Regular />}>
               Chat
             </Tab>
