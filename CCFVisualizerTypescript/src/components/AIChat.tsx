@@ -110,7 +110,6 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    transition: 'all 0.5s ease-in-out',
   },
   containerWithMessages: {
     display: 'flex',
@@ -119,7 +118,6 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    transition: 'all 0.5s ease-in-out',
   },
   sageTitle: {
     fontSize: '48px',
@@ -127,20 +125,6 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
     marginBottom: '32px',
     textAlign: 'center',
-    opacity: 1,
-    transform: 'translateY(0)',
-    transition: 'all 0.5s ease-in-out',
-  },
-  sageTitleHidden: {
-    fontSize: '48px',
-    fontWeight: '600',
-    color: tokens.colorNeutralForeground1,
-    marginBottom: '32px',
-    textAlign: 'center',
-    opacity: 0,
-    transform: 'translateY(-50px)',
-    transition: 'all 0.5s ease-in-out',
-    pointerEvents: 'none',
   },
   chatPane: {
     flex: 1,
@@ -340,7 +324,6 @@ const useStyles = makeStyles({
     ...shorthands.padding('10px', '16px'),
     backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all 0.5s ease-in-out',
   },
   inputAreaCentered: {
     position: 'relative',
@@ -355,76 +338,7 @@ const useStyles = makeStyles({
     ...shorthands.padding('10px', '16px'),
     backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all 0.5s ease-in-out',
     marginBottom: '24px',
-  },
-
-  //ending area
-  inputAreaAnimating: {
-    position: 'absolute',
-    left: 'auto',
-    top: '47%',
-    bottom: '20px',
-    transform: 'translateY(-50%)',
-    width: '100%',
-    maxWidth: '830px',
-    zIndex: 1000,
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.padding('10px', '16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-  },
-
-  inputAreaAnimatingToBottom: {
-    position: 'fixed', 
-    left: 'auto',
-    top: 'calc(100vh - 230px)',
-    transform: 'translateY(80%)',
-    width: '100%',
-    maxWidth: '830px',
-    zIndex: 1000,
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.padding('10px', '16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-  },
-
-  // Reverse animation classes (bottom to center)
-  inputAreaAnimatingToCenter: {
-    position: 'fixed',
-    left: 'auto',
-    top: '47%',
-    //transform: 'translateY(70%)',
-    width: '100%',
-    maxWidth: '830px',
-    zIndex: 1000,
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.padding('10px', '16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all .8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-  },
-
-  inputAreaAnimatingToCenterFinal: {
-    position: 'fixed',
-    left: 'auto',
-    top: '47%',
-    bottom: 0,
-    transform: 'translateY(-11%)',
-    width: '100%',
-    maxWidth: '830px',
-    zIndex: 1000,
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.padding('10px', '16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
   },
   
   starterTemplates: {
@@ -434,22 +348,7 @@ const useStyles = makeStyles({
     ...shorthands.gap('12px'),
     width: '100%',
     maxWidth: '830px',
-    opacity: 1,
-    transform: 'translateY(0)',
-    transition: 'all 0.5s ease-in-out',
     justifyContent: 'center',
-  },
-  starterTemplatesHidden: {
-    display: 'flex',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    ...shorthands.gap('12px'),
-    width: '100%',
-    maxWidth: '830px',
-    opacity: 0,
-    transform: 'translateY(50px)',
-    transition: 'all 0.5s ease-in-out',
-    pointerEvents: 'none',
   },
   chatInputContainer: {
     position: 'relative',
@@ -618,12 +517,6 @@ export const AIChat: React.FC<AIChatProps> = ({
   // Add verification hooks
   const verification = useVerification();
   const hasMessages = messages.length > 0;
-  
-  // Animation state for input area transition
-  const [inputAnimationClass, setInputAnimationClass] = useState('');
-  
-  // State to control when to show initial UI elements during clear animation
-  const [showInitialUI, setShowInitialUI] = useState(true);
   
   // Force refresh checkpoints when component mounts
   useEffect(() => {
@@ -1138,16 +1031,6 @@ export const AIChat: React.FC<AIChatProps> = ({
   const handleSendMessage = async (optionalMessage?: string) => {
     if (isLoading || (!optionalMessage && !currentMessage.trim())) return;
 
-    // Start animation if this is the first message
-    if (messages.length === 0) {
-      setShowInitialUI(false); // Hide initial UI when starting conversation
-      setInputAnimationClass('animating');
-      // After a brief moment, transition to the bottom position
-      setTimeout(() => {
-        setInputAnimationClass('animatingToBottom');
-      }, 50); // Small delay to allow initial state to render
-    }
-
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       state: 'finished',
@@ -1187,20 +1070,9 @@ export const AIChat: React.FC<AIChatProps> = ({
   };
 
   const clearChat = () => {      
-      // Clear messages immediately and hide initial UI during animation
+      // Clear messages and reset error state
       setMessages([]);
-      setShowInitialUI(false);
-      
-      // After a brief moment, transition to center position
-      setTimeout(() => {
-        setInputAnimationClass('animatingToCenterFinal');
-        // After animation completes, show initial UI and reset animation state
-        setTimeout(() => {
-          setShowInitialUI(true);
-          setError(null);
-          setInputAnimationClass('');
-        }, 800); // Match the CSS transition duration
-      }, 50);
+      setError(null);
   };
 
   // Register clearChat function with parent component
@@ -1246,21 +1118,15 @@ export const AIChat: React.FC<AIChatProps> = ({
   return (
     <>
       <div className={hasMessages ? styles.containerWithMessages : styles.container}>
-        {/* Sage Title - visible when no messages and showing initial UI */}
-        {!hasMessages && showInitialUI && (
+        {/* Sage Title - visible when no messages */}
+        {!hasMessages && (
           <div className={styles.sageTitle}>
             Sage
           </div>
         )}
 
-        {/* Input Area - animated transition from center to bottom and back */}
-        <div className={
-          inputAnimationClass === 'animating' ? styles.inputAreaAnimating :
-          inputAnimationClass === 'animatingToBottom' ? styles.inputAreaAnimatingToBottom :
-          inputAnimationClass === 'animatingToCenter' ? styles.inputAreaAnimatingToCenter :
-          inputAnimationClass === 'animatingToCenterFinal' ? styles.inputAreaAnimatingToCenterFinal :
-          hasMessages ? styles.inputArea : styles.inputAreaCentered
-        }>
+        {/* Input Area - positioned based on whether there are messages */}
+        <div className={hasMessages ? styles.inputArea : styles.inputAreaCentered}>
           {error && (
             <div className={styles.errorContainer}>
               <MessageBar intent="error">
@@ -1339,8 +1205,8 @@ export const AIChat: React.FC<AIChatProps> = ({
           </div>
         </div>
 
-        {/* Starter templates - visible when no messages and showing initial UI, positioned under input area */}
-        {!hasMessages && showInitialUI && (
+        {/* Starter templates - visible when no messages, positioned under input area */}
+        {!hasMessages && (
           <div className={styles.starterTemplates}>
             <CompoundButton
               icon={<ChatAddRegular />}
