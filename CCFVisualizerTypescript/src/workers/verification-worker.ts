@@ -1,6 +1,6 @@
 // Simplified Verification Web Worker - Database-based approach with browser storage for progress
 
-import { MerkleTree, toHexStringLower } from '../utils/merkle-tree';
+import { MerkleTree, toHexStringLower, areByteArraysEqual, hexStringToBytes } from '../utils/merkle-tree';
 import type { 
   WorkerInMessage, 
   WorkerOutMessage,
@@ -69,7 +69,8 @@ class VerificationWorker {
         }
       });
 
-      const limit = 1000;
+      // Increased batch size for better performance (more transactions per DB query)
+      const limit = 5000;
       let start = startFromTransaction;
       let processedCount = startFromTransaction;
 
@@ -120,22 +121,28 @@ class VerificationWorker {
               if (signatures.root) {
                 // Calculate root of all transactions processed so far (excluding current signature transaction)
                 const calculatedRootBytes = await this.merkleTree.calculateRootHash();
-                const calculatedRootHex = toHexStringLower(calculatedRootBytes);
                 
-                // Parse the expected root from signature data
-                let expectedRootHex: string;
+                // Parse the expected root from signature data  
+                let expectedRootBytes: Uint8Array;
                 if (typeof signatures.root === 'string') {
-                  expectedRootHex = signatures.root;
+                  expectedRootBytes = hexStringToBytes(signatures.root);
                 } else {
-                  const expectedRootBytes = new Uint8Array(signatures.root);
-                  expectedRootHex = toHexStringLower(expectedRootBytes);
+                  expectedRootBytes = new Uint8Array(signatures.root);
                 }
                 
-                if (calculatedRootHex !== expectedRootHex) {
+                // Compare byte arrays directly - much faster than hex string comparison
+                if (!areByteArraysEqual(calculatedRootBytes, expectedRootBytes)) {
+                  // Only convert to hex for error message
+                  const calculatedRootHex = toHexStringLower(calculatedRootBytes);
+                  const expectedRootHex = toHexStringLower(expectedRootBytes);
                   throw new Error(`Merkle root mismatch at transaction ${transaction.txId}. Expected: ${expectedRootHex}, Calculated: ${calculatedRootHex}`);
                 }
                 
-                console.log(`Signature verification passed at transaction ${transaction.txId}. Root hash: ${calculatedRootHex}`);
+                // Only log success occasionally to reduce string conversion overhead
+                if (transaction.txId % 1000 === 0) {
+                  const calculatedRootHex = toHexStringLower(calculatedRootBytes);
+                  console.log(`Signature verification passed at transaction ${transaction.txId}. Root hash: ${calculatedRootHex}`);
+                }
               }
             } catch (parseError) {
               if (parseError instanceof Error && parseError.message.includes('Merkle root mismatch')) {
@@ -149,8 +156,8 @@ class VerificationWorker {
           await this.merkleTree.insertLeaf(transaction.txHash);
           processedCount++;
 
-          // Report progress every 100 transactions (removed localStorage calls)
-          if (processedCount % (config.progressReportInterval || 50) === 0) {
+          // Report progress less frequently to reduce communication overhead
+          if (processedCount % (config.progressReportInterval || 200) === 0) {
             this.postMessage({ 
               type: 'progress', 
               data: {
@@ -262,7 +269,7 @@ class VerificationWorker {
     db = new SQL.Database(dbData);
   }
 
-  // Get transactions with their related data for verification
+  // Get transactions with their related data for verification (optimized single query)
   private async getTransactionsWithRelated(start: number, limit: number): Promise<Array<{
     txId: number;
     txHash: Uint8Array;
@@ -273,57 +280,52 @@ class VerificationWorker {
   }>> {
     if (!db) throw new Error('Database not initialized');
 
-    // Get transactions with their tx_digest (hash)
-    const transactionResult = db.exec(`
-      SELECT id, tx_digest
-      FROM transactions
-      ORDER BY id
-      LIMIT ? OFFSET ?
-    `, [limit, start]);
+    // Single optimized query with LEFT JOIN to get all data at once
+    const result = db.exec(`
+      SELECT 
+        t.id as tx_id,
+        t.tx_digest,
+        kw.map_name,
+        kw.value_text
+      FROM transactions t
+      LEFT JOIN kv_writes kw ON t.id = kw.transaction_id AND kw.value_text IS NOT NULL
+      WHERE t.id >= ? AND t.id < ?
+      ORDER BY t.id, kw.map_name
+    `, [start + 1, start + limit + 1]); // +1 because transaction IDs are 1-based
 
-    if (transactionResult.length === 0) return [];
+    if (result.length === 0) return [];
 
-    const transactions = transactionResult[0].values.map((row: unknown[]) => ({
-      txId: row[0] as number,
-      txHash: new Uint8Array(row[1] as ArrayBuffer),
-    }));
-
-    // For each transaction, get its writes that might contain signature information
-    const result: Array<{
+    // Group the results by transaction
+    const transactionMap = new Map<number, {
       txId: number;
       txHash: Uint8Array;
-      tables: Array<{
-        storeName: string;
-        value: string;
-      }>;
-    }> = [];
+      tables: Array<{ storeName: string; value: string }>;
+    }>();
 
-    for (const tx of transactions) {
-      const writesResult = db.exec(`
-        SELECT map_name, value_text
-        FROM kv_writes
-        WHERE transaction_id = ? AND value_text IS NOT NULL
-      `, [tx.txId]);
+    for (const row of result[0].values) {
+      const txId = row[0] as number;
+      const txDigest = new Uint8Array(row[1] as ArrayBuffer);
+      const mapName = row[2] as string | null;
+      const valueText = row[3] as string | null;
 
-      const tables: Array<{ storeName: string; value: string }> = [];
-      
-      if (writesResult.length > 0) {
-        for (const writeRow of writesResult[0].values) {
-          tables.push({
-            storeName: writeRow[0] as string,
-            value: writeRow[1] as string,
-          });
-        }
+      if (!transactionMap.has(txId)) {
+        transactionMap.set(txId, {
+          txId,
+          txHash: txDigest,
+          tables: []
+        });
       }
 
-      result.push({
-        txId: tx.txId,
-        txHash: tx.txHash,
-        tables,
-      });
+      // Only add table entries that have data
+      if (mapName && valueText) {
+        transactionMap.get(txId)!.tables.push({
+          storeName: mapName,
+          value: valueText
+        });
+      }
     }
 
-    return result;
+    return Array.from(transactionMap.values());
   }
 
   private async getTotalTransactionsCount(): Promise<number> {
