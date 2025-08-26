@@ -101,7 +101,9 @@ export function useVerification(): UseVerificationResult {
 
   const pause = useCallback(() => {
     verificationService.pauseVerification();
-    // Don't immediately set UI state - wait for worker to report paused status
+    // Immediately update UI to show pausing state for better user feedback
+    setProgress(prev => prev ? { ...prev, status: 'paused' } : null);
+    // Don't set isRunning to false immediately - let worker confirm the pause
   }, []);
 
   const resume = useCallback(() => {

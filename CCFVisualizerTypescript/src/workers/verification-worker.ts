@@ -70,8 +70,8 @@ class VerificationWorker {
         }
       });
 
-      // Increased batch size for better performance (more transactions per DB query)
-      const limit = 5000;
+      // Reduced batch size for more responsive pause behavior
+      const limit = 500;
       let start = startFromTransaction;
       let processedCount = startFromTransaction;
 
@@ -110,6 +110,26 @@ class VerificationWorker {
 
         for (const transaction of transactions) {
           if (this.shouldStop) break;
+          
+          // Check for pause more frequently during transaction processing
+          if (this.isPaused && !this.shouldStop) {
+            // Send paused message
+            this.postMessage({ 
+              type: 'paused',
+              data: {
+                currentTransaction: processedCount,
+                totalTransactions: totalCount
+              }
+            });
+            
+            // Wait while paused
+            while (this.isPaused && !this.shouldStop) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // If we were stopped while paused, exit
+            if (this.shouldStop) break;
+          }
 
           // Look for signature transactions FIRST - before adding to tree
           const signatureTx = transaction.tables.find(table => 
@@ -120,6 +140,26 @@ class VerificationWorker {
             try {
               const signatures = JSON.parse(signatureTx.value);
               if (signatures.root) {
+                // Check for pause before expensive Merkle tree calculation
+                if (this.isPaused && !this.shouldStop) {
+                  // Send paused message
+                  this.postMessage({ 
+                    type: 'paused',
+                    data: {
+                      currentTransaction: processedCount,
+                      totalTransactions: totalCount
+                    }
+                  });
+                  
+                  // Wait while paused
+                  while (this.isPaused && !this.shouldStop) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                  }
+                  
+                  // If we were stopped while paused, exit
+                  if (this.shouldStop) break;
+                }
+                
                 // Calculate root of all transactions processed so far (excluding current signature transaction)
                 const calculatedRootBytes = await this.merkleTree.calculateRootHash();
                 
@@ -157,8 +197,8 @@ class VerificationWorker {
           await this.merkleTree.insertLeaf(transaction.txHash);
           processedCount++;
 
-          // Report progress less frequently to reduce communication overhead
-          if (processedCount % (config.progressReportInterval || 200) === 0) {
+          // Report progress more frequently for better UI responsiveness
+          if (processedCount % (config.progressReportInterval || 50) === 0) {
             this.postMessage({ 
               type: 'progress', 
               data: {
@@ -232,13 +272,31 @@ class VerificationWorker {
 
   // Rebuild Merkle tree up to a specific transaction for resumption
   private async rebuildMerkleTree(upToTransaction: number): Promise<void> {
-    const limit = 1000;
+    const limit = 500; // Use smaller batches for better pause responsiveness
     let start = 0;
 
     while (start < upToTransaction) {
+      // Check for pause before each batch during rebuild
+      if (this.isPaused && !this.shouldStop) {
+        while (this.isPaused && !this.shouldStop) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        if (this.shouldStop) return;
+      }
+      
       const transactions = await this.getTransactionsWithRelated(start, Math.min(limit, upToTransaction - start));
       
       for (const transaction of transactions) {
+        if (this.shouldStop) return;
+        
+        // Check for pause during transaction processing in rebuild
+        if (this.isPaused && !this.shouldStop) {
+          while (this.isPaused && !this.shouldStop) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          if (this.shouldStop) return;
+        }
+        
         await this.merkleTree.insertLeaf(transaction.txHash);
       }
 

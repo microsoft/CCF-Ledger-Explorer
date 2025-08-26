@@ -828,13 +828,13 @@ export const AIChat: React.FC<AIChatProps> = ({
           const jsonString = JSON.stringify(action.actionResult);
           
           // Only process if the JSON is complex enough to warrant cleanup
-          if (jsonString.length > 200 && (Array.isArray(action.actionResult) || Object.keys(action.actionResult).length > 3)) {
+          //if (jsonString.length > 200 && (Array.isArray(action.actionResult) || Object.keys(action.actionResult).length > 3)) {
             const cleanedResponse = await requestJsonCleanup(jsonString, action.actionName);
             if (cleanedResponse) {
               // Store both the original result and the cleaned version
               action.cleanedResult = cleanedResponse;
             }
-          }
+          //}
         } catch (err) {
           console.error('Error processing JSON response:', err);
           // Don't set an error here as this is supplementary processing
@@ -873,7 +873,13 @@ Please provide a clean, human-readable summary that captures the essential infor
       }
 
       const data = await response.json();
-      return data.response?.output?.[0]?.text || null;
+      for (const output of data.output) {
+        if (output?.role == "assistant") {
+          // Process the assistant's output
+          return output?.content[0]?.text;
+        }
+      }
+      return null;
     } catch (err) {
       console.error('Error requesting JSON cleanup:', err);
       return null;
