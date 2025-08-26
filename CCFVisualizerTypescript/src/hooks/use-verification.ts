@@ -15,7 +15,6 @@ interface UseVerificationResult {
 
   // Actions
   start: (config?: Partial<VerificationConfig>) => Promise<void>;
-  stop: () => void;
   pause: () => void;
   resume: () => void;
   clearProgress: () => void;
@@ -100,10 +99,6 @@ export function useVerification(): UseVerificationResult {
     }
   }, []);
 
-  const stop = useCallback(() => {
-    verificationService.stopVerification();
-  }, []);
-
   const pause = useCallback(() => {
     verificationService.pauseVerification();
     // Don't immediately set UI state - wait for worker to report paused status
@@ -132,7 +127,6 @@ export function useVerification(): UseVerificationResult {
 
     // Actions
     start,
-    stop,
     pause,
     resume,
     clearProgress,

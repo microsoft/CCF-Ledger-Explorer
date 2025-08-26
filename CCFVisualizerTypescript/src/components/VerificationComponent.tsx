@@ -18,7 +18,6 @@ import {
 } from '@fluentui/react-components';
 import {
   Play24Regular,
-  Stop24Regular,
   Pause24Regular,
   Checkmark24Regular,
   ErrorCircle24Regular,
@@ -80,7 +79,6 @@ export const VerificationComponent: React.FC<VerificationComponentProps> = () =>
     isRunning,
     error,
     start: startVerification,
-    stop: stopVerification,
     pause: pauseVerification,
     resume: resumeVerification,
     clearProgress
@@ -92,10 +90,6 @@ export const VerificationComponent: React.FC<VerificationComponentProps> = () =>
     } catch (error) {
       console.error('Failed to start verification:', error);
     }
-  };
-
-  const handleStop = () => {
-    stopVerification();
   };
 
   const handlePause = () => {
@@ -193,13 +187,6 @@ export const VerificationComponent: React.FC<VerificationComponentProps> = () =>
                 </Button>
               ) : (
                 <>
-                  <Button 
-                    appearance="secondary" 
-                    icon={<Stop24Regular />} 
-                    onClick={handleStop}
-                  >
-                    Stop
-                  </Button>
                   {progress?.status === 'running' ? (
                     <Button 
                       appearance="secondary" 
