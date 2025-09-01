@@ -13,20 +13,12 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
-  Dialog,
-  DialogSurface,
-  DialogTitle,
-  DialogContent,
-  DialogBody,
-  DialogActions,
-  Body1,
 } from '@fluentui/react-components';
 import {
   Send24Regular,
   ChatAddRegular,
   Add24Regular,
   DocumentAdd24Regular,
-  DatabaseArrowDownRegular,
   Edit24Regular,
   Stop24Regular,
 } from '@fluentui/react-icons';
@@ -49,6 +41,7 @@ import type { SavedProgress } from '../services/verification-service';
 const MAX_INPUT_LENGTH = 48000;
 const MAX_OUTPUT_TOKENS = 2000;
 const AI_TEMPERATURE = 0.1; // less means more deterministic
+const MESSAGES_KEY = 'ccf-chat-messages';
 
 const UIActionName = {
   ImportMST: 'importmst',
@@ -474,7 +467,16 @@ export const AIChat: React.FC<AIChatProps> = ({
 }) => {
   const styles = useStyles();
   const { config } = useConfig();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const savedMessages = localStorage.getItem(MESSAGES_KEY);
+    let parsedMessages;
+    try {
+      parsedMessages = JSON.parse(savedMessages || '');
+    } catch (error) {
+      console.error('Failed to parse saved messages:', error);
+    }
+    return parsedMessages || [];
+  });
   const [currentMessage, setCurrentMessage] = useState('');
   const { data: allTransactionsCount } = useAllTransactionsCount();
   const [isLoading, setIsLoading] = useState(false);
@@ -484,7 +486,6 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   // Add state for Plus button dropdown and dialogs
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [showDropDbDialog, setShowDropDbDialog] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Add verification hooks
@@ -492,50 +493,55 @@ export const AIChat: React.FC<AIChatProps> = ({
   const hasMessages = messages.length > 0;
   const { error: mstError, downloadFiles: downloadMstFiles } = useDownloadMstFiles();
 
+    // Register clearChat function with parent component
+  useEffect(() => {
+    onRegisterClearChat?.(() => clearChat);
+    return () => onRegisterClearChat?.(null);
+  }, [onRegisterClearChat]);
+
+  useEffect(() => {
+    // Ensure page starts at the top on initial load
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
+  useEffect(() => {
+    // Cleanup abort controller on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     onChatStateChange?.(hasMessages);
   }, [hasMessages, onChatStateChange]);
 
-  // Ensure page starts at the top on initial load
+ 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  }, []);
-
-  // Auto-scroll to always keep the most recent user message at the top of the screen
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-
+    // Save messages to localStorage
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    
+    // Auto-scroll to the last content streamed to the view
     if (messages.length > 0) {
-      // Use a small delay to ensure DOM is updated
-      timeoutId = setTimeout(() => {
-        // Find the most recent user message and keep it at the top
-        const userMessages = messages.filter(m => m.role === 'user');
-
-        if (userMessages.length > 0) {
-          const lastUserMessage = userMessages[userMessages.length - 1];
-          const messageElements = document.querySelectorAll('[data-message-role]');
-          const userMessageElement = Array.from(messageElements).find(el =>
-            el.getAttribute('data-message-id') === lastUserMessage.id
-          ) as HTMLElement;
-
-          if (userMessageElement) {
-            // Always scroll to show the most recent user message at the top
-            userMessageElement.scrollIntoView({
-              behavior: 'smooth',
-              block: 'end', // bottom of the message, this is important when streaming content into view
-              inline: 'nearest'
-            });
-          }
+      const userMessages = messages.filter(m => m.role === 'user');
+      if (userMessages.length > 0) {
+        const chatMessagesContainer = document.querySelector('.chat-messages-container');
+        const messageElements = document.querySelectorAll('[data-message-role]');
+        const lastElement = messageElements[messageElements.length - 1] as HTMLElement;
+        if (lastElement && chatMessagesContainer) {
+          const elementRect = lastElement.getBoundingClientRect();
+          const elementBottom = elementRect.bottom;
+          const scrollingHeight = chatMessagesContainer.clientHeight;
+          const targetBottomPosition = scrollingHeight - 400;
+          const scrollAmount = elementBottom - targetBottomPosition;
+          chatMessagesContainer.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth'
+          });
         }
-      }, 150); // Slightly longer delay to ensure content is fully rendered
-    }
-
-    // Cleanup function to cancel timeout if messages change
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
       }
-    };
+    }
   }, [messages]);
 
   // Auto-resize textarea
@@ -711,12 +717,18 @@ export const AIChat: React.FC<AIChatProps> = ({
   const extractActions = (content: string): Array<UIAction> => {
     const actionRegex = /```action:([a-zA-Z_][a-zA-Z0-9_]*)\n([\s\S]*?)```/g;
     const actions: Array<UIAction> = [];
+    const trackDuplicates = new Set<string>();
 
     let match;
     while ((match = actionRegex.exec(content)) !== null) {
       const actionName = match[1].trim();
       const actionContent = match[2].trim();
-      actions.push({ actionName, actionContent });
+      const actionKey = `${actionName}:${actionContent}`;
+      // LLM sometimes generates duplicate actions
+      if (!trackDuplicates.has(actionKey)) {
+        trackDuplicates.add(actionKey);
+        actions.push({ actionName, actionContent });
+      }
     }
 
     return actions;
@@ -1034,39 +1046,6 @@ Please provide a clean, human-readable summary that captures the essential infor
     }
   };
 
-  // Register clearChat function with parent component
-  useEffect(() => {
-    onRegisterClearChat?.(() => clearChat);
-    return () => onRegisterClearChat?.(null);
-  }, [onRegisterClearChat]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  const handleDropDatabase = async () => {
-    try {
-      // For now, this is a simple implementation
-      // In a real scenario, you'd want to properly clear the database
-      if (database) {
-        console.log('Dropping database...');
-        // Since we don't have a built-in drop method, we could:
-        // 1. Reload the page to reset the database
-        // 2. Clear localStorage
-        // 3. Implement a proper database reset
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to drop database:', error);
-      setError('Failed to drop database');
-    }
-  };
-
   const formatSqlResult = (result: unknown[]): string => {
     if (!result || result.length === 0) {
       return 'No results found';
@@ -1085,7 +1064,7 @@ Please provide a clean, human-readable summary that captures the essential infor
 
   return (
     <>
-      <div className={hasMessages ? styles.containerWithMessages : styles.container}>
+      <div className={"chat-messages-container " + (hasMessages ? styles.containerWithMessages : styles.container)}>
         {/* Sage Title - visible when no messages */}
         {!hasMessages && (
           <div className={styles.sageTitle}>
@@ -1136,12 +1115,6 @@ Please provide a clean, human-readable summary that captures the essential infor
                       onClick={() => setShowUploadDialog(true)}
                     >
                       Add Files
-                    </MenuItem>
-                    <MenuItem
-                      icon={<DatabaseArrowDownRegular />}
-                      onClick={() => setShowDropDbDialog(true)}
-                    >
-                      Drop DB
                     </MenuItem>
                   </MenuList>
                 </MenuPopover>
@@ -1362,44 +1335,6 @@ Please provide a clean, human-readable summary that captures the essential infor
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
       />
-
-      <Dialog open={showDropDbDialog} onOpenChange={(_, data) => setShowDropDbDialog(data.open)}>
-        <DialogSurface>
-          <DialogTitle>Drop Database</DialogTitle>
-          <DialogContent>
-            <DialogBody>
-              <Body1>
-                Are you sure you want to drop the entire database? This will:
-              </Body1>
-              <ul>
-                <li>Remove all tables and data completely</li>
-                <li>Reset the database schema to its initial state</li>
-                <li>Free up all storage space used by the database</li>
-              </ul>
-              <Body1>
-                This action cannot be undone and will reload the page.
-              </Body1>
-            </DialogBody>
-            <DialogActions>
-              <Button
-                appearance="secondary"
-                onClick={() => setShowDropDbDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                appearance="primary"
-                onClick={() => {
-                  setShowDropDbDialog(false);
-                  handleDropDatabase();
-                }}
-              >
-                Drop Database
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        </DialogSurface>
-      </Dialog>
     </>
   );
 };

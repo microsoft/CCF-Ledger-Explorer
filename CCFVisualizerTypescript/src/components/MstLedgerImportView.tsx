@@ -96,11 +96,11 @@ const useStyles = makeStyles({
     },
 });
 
-export const useDownloadMstFiles = (initialDomain?: string) => {
+export const useDownloadMstFiles = () => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [downloadedFiles, setDownloadedFiles] = useState<File[]>([]);
-    const [domain, setDomain] = useState<string>(initialDomain || '');
+    const [domain, setDomain] = useState<string>('');
     const { handleFiles } = useFileDrop();
     const { config } = useConfig();
 
@@ -119,16 +119,9 @@ export const useDownloadMstFiles = (initialDomain?: string) => {
         try {
             const fileShareService = new MstFilesService();
             await fileShareService.initialize(domainToUse, config.mstProxyUrl);
-            const ledgerFiles = await fileShareService.listLedgerFiles();
-
-            const allDownloadedFiles: File[] = [];
-            for (const file of ledgerFiles) {
-                const { files: downloadedFiles } = await fileShareService.downloadLedgerFiles(file);
-                allDownloadedFiles.push(...downloadedFiles);
-                setDownloadedFiles((prev) => [...prev, ...downloadedFiles]);
-            }
-
-            await handleFiles(allDownloadedFiles);
+            const { files: downloadedFiles } = await fileShareService.downloadAllLedgerFiles();
+            setDownloadedFiles((prev) => [...prev, ...downloadedFiles]);
+            await handleFiles(downloadedFiles);
         } catch (error) {
             setError(error instanceof Error ? error.message : 'Failed to download ledger files');
         } finally {

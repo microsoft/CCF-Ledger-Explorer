@@ -159,7 +159,7 @@ export class MstFilesService {
     return validation.sortedFiles;
   }
 
-  async downloadLedgerFiles(ledgerFile: LedgerFileInfo): Promise<{ files: File[]; filesDownloaded: LedgerFileInfo[]; }> {
+  async downloadLedgerFiles(upToFile: LedgerFileInfo): Promise<{ files: File[]; filesDownloaded: LedgerFileInfo[]; }> {
     if (!this.mstClient) {
       throw new Error('File share client not initialized');
     }
@@ -170,10 +170,43 @@ export class MstFilesService {
         throw new Error('No ledger files found in the file share');
       }
       // Filter for files to download from storage
-      const ledgerFileToDownloadFromStorage = ledgerFileListFromStorage.filter(file => file.endNo <= ledgerFile.endNo);
+      const ledgerFileToDownloadFromStorage = ledgerFileListFromStorage.filter(file => file.endNo <= upToFile.endNo);
       const files: File[] = [];
       const filesDownloaded: LedgerFileInfo[] = [];
       for (const downloadFile of ledgerFileToDownloadFromStorage) {
+        filesDownloaded.push(downloadFile);
+        console.log(`Downloading file: ${downloadFile.filename}`);
+        const downloadResponse = await this.mstClient.downloadFile(downloadFile.filename);
+        const blob = await downloadResponse.blobBody;
+        if (!blob) {
+          console.error(`Failed to download file: ${downloadFile.filename}`);
+          continue; // Skip if blob is null
+        }
+        const file = await this.blobToFile(blob, downloadFile.filename);
+        files.push(file);
+      }
+      return { files, filesDownloaded };
+    }
+
+    catch (error) {
+      console.error('No Files to download in the File share', error);
+      throw new Error('No Files to download in the File share');
+    }
+  }
+
+  async downloadAllLedgerFiles(): Promise<{ files: File[]; filesDownloaded: LedgerFileInfo[]; }> {
+    if (!this.mstClient) {
+      throw new Error('File share client not initialized');
+    }
+
+    try {
+      const ledgerFileListFromStorage = await this.listLedgerFiles();
+      if (ledgerFileListFromStorage.length === 0) {
+        throw new Error('No ledger files found in the file share');
+      }
+      const files: File[] = [];
+      const filesDownloaded: LedgerFileInfo[] = [];
+      for (const downloadFile of ledgerFileListFromStorage) {
         filesDownloaded.push(downloadFile);
         console.log(`Downloading file: ${downloadFile.filename}`);
         const downloadResponse = await this.mstClient.downloadFile(downloadFile.filename);
