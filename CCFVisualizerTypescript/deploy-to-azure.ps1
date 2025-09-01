@@ -217,6 +217,6 @@ if ($DeployToPreview) {
 
 # Deploy using SWA CLI
 Write-Info "Starting deployment to $deploymentEnvironment environment..."
-swa deploy ./dist --deployment-token $deploymentToken --env $deploymentEnvironment
+swa deploy ./dist --deployment-token $deploymentToken --env $deploymentEnvironment --swa-config-location .
 
 Write-Success "Deployment script completed!"
