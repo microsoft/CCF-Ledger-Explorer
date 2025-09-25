@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AIChat } from '../components/AIChat';
+import type { ChatMessage } from '../components/AIChat';
+import { ConversationHistory, saveConversationToHistory } from '../components/ConversationHistory';
 import { useDatabase } from '../hooks/use-ccf-data';
 import { Spinner, Text, makeStyles, tokens, shorthands } from '@fluentui/react-components';
 
@@ -43,6 +45,32 @@ export const AIPage: React.FC<AIPageProps> = ({
   const { data: database, isLoading, error } = useDatabase();
   const styles = useStyles();
 
+  // Conversation state
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
+  const [loadedMessages, setLoadedMessages] = useState<ChatMessage[] | undefined>(undefined);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const handleSaveConversation = (messages: ChatMessage[]) => {
+    if (!messages.length) return;
+    // Save to history and refresh sidebar
+  saveConversationToHistory(messages);
+    setRefreshSignal(r => r + 1);
+    // Reset active conversation (new thread)
+    setActiveConversationId(undefined);
+  };
+
+  const handleConversationSelect = (conv: any) => {
+    setActiveConversationId(conv.id);
+    // Convert timestamps back to Date objects
+    setLoadedMessages(conv.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+  };
+
+  const handleNewConversation = () => {
+    setActiveConversationId(undefined);
+    setLoadedMessages(undefined);
+  };
+
   if (isLoading) {
     return (
       <div className={styles.container}>
@@ -68,11 +96,26 @@ export const AIPage: React.FC<AIPageProps> = ({
   }
 
   return (
-    <AIChat 
-      database={database}
-      onChatStateChange={onChatStateChange}
-      onRegisterClearChat={onRegisterClearChat}
-      clearChatFunction={clearChatFunction}
-    />
+    <div style={{ display: 'flex', height: '100%' }}>
+      <ConversationHistory
+        onConversationSelect={handleConversationSelect}
+        onNewConversation={handleNewConversation}
+        activeConversationId={activeConversationId}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(c => !c)}
+        refreshSignal={refreshSignal}
+      />
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <AIChat
+          database={database}
+          onChatStateChange={onChatStateChange}
+          onRegisterClearChat={onRegisterClearChat}
+          clearChatFunction={clearChatFunction}
+          onSaveConversation={handleSaveConversation}
+          loadedMessages={loadedMessages}
+          sidebarWidth={isCollapsed ? 48 : 300}
+        />
+      </div>
+    </div>
   );
 };

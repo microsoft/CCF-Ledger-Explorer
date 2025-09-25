@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   Button,
   Spinner,
@@ -61,7 +61,7 @@ interface UIAction {
   cleanedResult?: string;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   state: 'initial' | 'streaming' | 'finished';
   role: 'user' | 'assistant';
@@ -81,6 +81,9 @@ interface AIChatProps {
   onChatStateChange?: (hasActiveChat: boolean) => void;
   onRegisterClearChat?: (clearFn: (() => void) | null) => void;
   clearChatFunction?: (() => void) | null;
+  onSaveConversation?: (messages: ChatMessage[]) => void;
+  loadedMessages?: ChatMessage[];
+  sidebarWidth?: number; // width of conversation sidebar to adjust centering
 }
 
 const useStyles = makeStyles({
@@ -292,9 +295,6 @@ const useStyles = makeStyles({
   inputArea: {
     position: 'fixed',
     bottom: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '100%',
     maxWidth: '830px',
     zIndex: 1000,
     display: 'flex',
@@ -303,21 +303,10 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
   },
-  inputAreaCentered: {
-    position: 'relative',
-    bottom: 'auto',
-    left: 'auto',
-    transform: 'none',
-    width: '100%',
-    maxWidth: '830px',
-    zIndex: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.padding('10px', '16px'),
-    backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderTop('0px', 'solid', tokens.colorNeutralStroke2),
-    marginBottom: '24px',
+  inputAreaAnimating: {
+    transition: 'left 0.25s ease, width 0.25s ease',
   },
+  inputAreaCentered: {}, // unused after refactor but keep reference to avoid code churn
 
   starterTemplates: {
     display: 'flex',
@@ -394,7 +383,7 @@ const useStyles = makeStyles({
     height: '32px',
     ...shorthands.borderRadius('50%'),
     backgroundColor: tokens.colorBrandBackground,
-    ...shorthands.border('none'),
+  ...shorthands.border('none'),
     color: tokens.colorNeutralForegroundInverted,
     '&:disabled': {
       backgroundColor: tokens.colorNeutralBackground4,
@@ -463,19 +452,19 @@ export const AIChat: React.FC<AIChatProps> = ({
   database,
   onChatStateChange,
   onRegisterClearChat,
-  clearChatFunction
+  clearChatFunction,
+  onSaveConversation,
+  loadedMessages,
+  sidebarWidth = 0
 }) => {
   const styles = useStyles();
   const { config } = useConfig();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const savedMessages = localStorage.getItem(MESSAGES_KEY);
-    let parsedMessages;
+    if (loadedMessages && loadedMessages.length) return loadedMessages;
     try {
-      parsedMessages = JSON.parse(savedMessages || '');
-    } catch (error) {
-      console.error('Failed to parse saved messages:', error);
-    }
-    return parsedMessages || [];
+      const raw = localStorage.getItem(MESSAGES_KEY);
+      return raw ? JSON.parse(raw).map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) : [];
+    } catch { return []; }
   });
   const [currentMessage, setCurrentMessage] = useState('');
   const { data: allTransactionsCount } = useAllTransactionsCount();
@@ -492,6 +481,27 @@ export const AIChat: React.FC<AIChatProps> = ({
   const verification = useVerification();
   const hasMessages = messages.length > 0;
   const { downloadFiles: downloadMstFiles } = useDownloadMstFiles();
+  const inputAreaRef = useRef<HTMLDivElement | null>(null);
+  const [animatingLayout, setAnimatingLayout] = useState(false);
+
+  useLayoutEffect(() => {
+    const maxWidth = 830;
+    const horizontalMargin = 20;
+    const sync = () => {
+      if (!inputAreaRef.current) return;
+      const vw = window.innerWidth;
+      const available = vw - sidebarWidth;
+      const contentWidth = Math.min(maxWidth, Math.max(320, available - horizontalMargin * 2));
+      const left = sidebarWidth + (available - contentWidth) / 2;
+      inputAreaRef.current.style.left = left + 'px';
+      inputAreaRef.current.style.width = contentWidth - 35 + 'px';
+    };
+    sync();
+    setAnimatingLayout(true);
+    const raf = requestAnimationFrame(() => { sync(); setAnimatingLayout(false); });
+    window.addEventListener('resize', sync);
+    return () => { window.removeEventListener('resize', sync); cancelAnimationFrame(raf); };
+  }, [sidebarWidth]);
 
     // Register clearChat function with parent component
   useEffect(() => {
@@ -516,6 +526,13 @@ export const AIChat: React.FC<AIChatProps> = ({
   useEffect(() => {
     onChatStateChange?.(hasMessages);
   }, [hasMessages, onChatStateChange]);
+
+  // Sync externally loaded conversation messages
+  useEffect(() => {
+    if (loadedMessages) {
+      setMessages(loadedMessages);
+    }
+  }, [loadedMessages]);
 
  
   useEffect(() => {
@@ -1031,7 +1048,10 @@ Please provide a clean, human-readable summary that captures the essential infor
         )}
 
         {/* Input Area - positioned based on whether there are messages */}
-        <div className={hasMessages ? styles.inputArea : styles.inputAreaCentered}>
+        <div
+          ref={inputAreaRef}
+          className={(hasMessages ? styles.inputArea : styles.inputAreaCentered) + (animatingLayout ? ' ' + styles.inputAreaAnimating : '')}
+        >
           {error && (
             <div className={styles.errorContainer}>
               <MessageBar intent="error">
@@ -1085,7 +1105,10 @@ Please provide a clean, human-readable summary that captures the essential infor
                   <Button
                     appearance="subtle"
                     icon={<Edit24Regular />}
-                    onClick={() => clearChatFunction?.()}
+                    onClick={() => {
+                      onSaveConversation?.(messages);
+                      clearChatFunction?.();
+                    }}
                     className={styles.newConversationButton}
                     title="New Conversation"
                   />
