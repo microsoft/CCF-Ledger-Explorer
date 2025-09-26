@@ -169,10 +169,32 @@ export class MstFilesService {
       }
     }
     const validation = validateLedgerSequence([], files);
+    const sortedFilteredFiles: LedgerFileInfo[] = validation.sortedFiles;
     if (!validation.isValid) {
       console.warn(`Ledger files validation failed:`, validation.errors);
+
+      // skip overlapping ranges, 
+      // usually file starts with the same start number but ends with different end number
+      const indexesToRemove = [];
+      for (let i = 1; i < sortedFilteredFiles.length; i++) {
+        const prevFile = sortedFilteredFiles[i - 1];
+        const currFile = sortedFilteredFiles[i];
+        if (currFile.startNo == prevFile.startNo && currFile.endNo >= prevFile.endNo) {
+          console.warn(`Overlapping range. Skipping ${prevFile.filename}`);
+          indexesToRemove.push(i - 1);
+        } else if (currFile.startNo >= prevFile.startNo && currFile.endNo <= prevFile.endNo) {
+          console.warn(`Overlapping range. Skipping ${currFile.filename}`);
+          indexesToRemove.push(i);
+        }
+      }
+
+      // remove duplicates from the end to avoid index shifting
+      for (let i = indexesToRemove.length - 1; i >= 0; i--) {
+        const index = indexesToRemove[i];
+        sortedFilteredFiles.splice(index, 1);
+      }
     }
-    return validation.sortedFiles;
+    return sortedFilteredFiles;
   }
 
   async downloadLedgerFiles(upToFile: LedgerFileInfo): Promise<{ files: File[]; filesDownloaded: LedgerFileInfo[]; }> {

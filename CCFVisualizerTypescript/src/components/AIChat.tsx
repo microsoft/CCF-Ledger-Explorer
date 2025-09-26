@@ -520,7 +520,11 @@ export const AIChat: React.FC<AIChatProps> = ({
  
   useEffect(() => {
     // Save messages to localStorage
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    try {
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    } catch (error) {
+      console.error('Failed to save messages:', error);
+    }
     
     // Auto-scroll to the last content streamed to the view
     if (messages.length > 0) {
