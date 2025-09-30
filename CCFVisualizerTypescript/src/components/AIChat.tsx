@@ -40,7 +40,7 @@ import type { SavedProgress } from '../services/verification-service';
 // If one request takes ~10 sec for the user to scan through then the limit could be 288k/6=48k characters per request
 const MAX_INPUT_LENGTH = 48000;
 const MAX_OUTPUT_TOKENS = 2000;
-const AI_TEMPERATURE = 0.1; // less means more deterministic
+const AI_TEMPERATURE = 0.0; // less means more deterministic
 const MESSAGES_KEY = 'ccf-chat-messages';
 
 const UIActionName = {
