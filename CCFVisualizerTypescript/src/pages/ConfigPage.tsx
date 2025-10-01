@@ -81,6 +81,7 @@ const useStyles = makeStyles({
   toolsList: {
     marginTop: '8px',
     padding: '8px',
+    color: tokens.colorStatusSuccessForeground1,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusMedium,
   },
@@ -101,6 +102,7 @@ const useStyles = makeStyles({
 interface AppConfig {
   baseUrl: string;
   systemPrompt: string;
+  defaultSystemPrompt: string;
   mstProxyUrl: string;
 }
 
@@ -109,6 +111,7 @@ export const useConfig = () => {
   const [config, setConfig] = useState<AppConfig>({
     baseUrl: localStorage.getItem('chat_base_url') || '',
     systemPrompt: localStorage.getItem('chat_system_prompt') || defaultSystemPrompt,
+    defaultSystemPrompt: defaultSystemPrompt,
     mstProxyUrl: localStorage.getItem('mst_proxy_url') || '',
   });
 
@@ -350,6 +353,17 @@ export const ConfigPage: React.FC = () => {
                 value={config.systemPrompt}
                 onChange={(_, data) => setConfig(prev => ({ ...prev, systemPrompt: data.value }))} />
             </Field>
+            {/* add a note if systemPrompt is different from defaultSystemPrompt */}
+            {config.systemPrompt !== config.defaultSystemPrompt && (
+              <Text size={200} style={{ color: tokens.colorStatusWarningForeground1 }}>
+                Note: You have modified the system prompt from the default. Delete it to reset.
+              </Text>
+            )}
+            {config.systemPrompt === config.defaultSystemPrompt && (
+              <Text size={200} style={{ color: tokens.colorStatusSuccessForeground1 }}>
+                Using latest version of prompt.
+              </Text>
+            )}
           </div>
         </Card>
 
@@ -374,6 +388,13 @@ export const ConfigPage: React.FC = () => {
                 value={config.mstProxyUrl}
                 onChange={(_, data) => setConfig(prev => ({ ...prev, mstProxyUrl: data.value }))} />
             </Field>
+
+            {/* add a note if mstProxyUrl is not set */}
+            {!config.mstProxyUrl && (
+              <Text size={200} style={{ color: tokens.colorStatusWarningForeground1 }}>
+                Note: Missing proxy URL may lead to issues downloading ledger files.
+              </Text>
+            )}
           </div>
         </Card>
       </div>
