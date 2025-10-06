@@ -6,7 +6,7 @@ A TypeScript/React application for visualizing and exploring CCF (Confidential C
 
 - **Ledger File Parsing**: Import and parse CCF ledger files with full transaction details
 - **Transaction Visualization**: Browse transactions with detailed information and search capabilities
-- **AI Assistant**: Natural language querying using OpenAI integration with automatic SQL generation
+- **Sage AI Assistant**: Natural language querying using OpenAI integration with automatic SQL generation
 - **Azure Integration**: Direct import from Azure File Shares using SAS tokens
 - **Persistent Storage**: Client-side SQLite database using sql.js with OPFS VFS
 - **Modern UI**: Built with FluentUI React components and responsive design
@@ -62,6 +62,15 @@ The project includes an automated PowerShell deployment script (`deploy-to-azure
 ./deploy-to-azure.ps1 -DeployToPreview -PreviewEnvironment "feature-testing" -BuildFirst
 ```
 
+**Deploy with Sage features disabled (sets VITE_DISABLE_SAGE=true during build):**
+```powershell
+# Disable Sage in a production build
+./deploy-to-azure.ps1 -BuildFirst -DisableSage
+
+# Disable Sage in a preview build
+./deploy-to-azure.ps1 -BuildFirst -DeployToPreview -DisableSage
+```
+
 #### Script Parameters
 
 | Parameter | Description | Default |
@@ -71,6 +80,7 @@ The project includes an automated PowerShell deployment script (`deploy-to-azure
 | `-Location` | Azure region | `East US 2` |
 | `-CreateResources` | Create Azure resources if they don't exist | `false` |
 | `-BuildFirst` | Build the application before deployment | `false` |
+| `-DisableSage` | Temporarily set VITE_DISABLE_SAGE=true for the build (requires -BuildFirst) | `false` |
 | `-DeployToPreview` | Deploy to preview environment | `false` |
 | `-PreviewEnvironment` | Custom preview environment name | Auto-generated |
 

@@ -31,7 +31,10 @@ param(
     [string]$PreviewEnvironment = "",
     
     [Parameter(Mandatory=$false)]
-    [switch]$DeployToPreview = $false
+    [switch]$DeployToPreview = $false,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$DisableSage = $false # When used WITH -BuildFirst, sets VITE_DISABLE_SAGE=true for the build only
 )
 
 # Parameter validation
@@ -107,25 +110,44 @@ try {
 # Build the application if requested
 if ($BuildFirst -or (-not (Test-Path "dist"))) {
     Write-Info "Building the application..."
-    
-    # Check if node_modules exists
-    if (-not (Test-Path "node_modules")) {
-        Write-Info "Installing npm dependencies..."
-        npm install
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Failed to install npm dependencies"
-            exit 1
+
+    # Handle optional Sage disabling (only valid if -BuildFirst explicitly provided)
+    $restoreDisableSage = $false
+    if ($DisableSage) {
+        if (-not $BuildFirst) {
+            Write-Warning "-DisableSage specified but -BuildFirst not provided. Ignoring -DisableSage."
+        } else {
+            Write-Info "Disabling Sage features for this build (setting VITE_DISABLE_SAGE=true)"
+            $env:VITE_DISABLE_SAGE = "true"
+            $restoreDisableSage = $true
         }
     }
-    
-    # Build the project
-    npm run build
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to build the application"
-        exit 1
+
+    try {
+        # Check if node_modules exists
+        if (-not (Test-Path "node_modules")) {
+            Write-Info "Installing npm dependencies..."
+            npm install
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Failed to install npm dependencies"
+                exit 1
+            }
+        }
+
+        # Build the project (env var already set if needed)
+        npm run build
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to build the application"
+            exit 1
+        }
+
+        Write-Success "Application built successfully"
+    } finally {
+        if ($restoreDisableSage) {
+            # Clean up the temporary environment variable
+            Remove-Item Env:VITE_DISABLE_SAGE -ErrorAction SilentlyContinue
+        }
     }
-    
-    Write-Success "Application built successfully"
 }
 
 # Check if dist folder exists
