@@ -33,7 +33,7 @@ const useStyles = makeStyles({
   },
   cardsContainer: {
     display: 'flex',
-    ...shorthands.gap('24px'),
+    gap: '24px',
     width: '100%',
     maxWidth: '800px',
   },
@@ -55,8 +55,8 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    ...shorthands.padding('32px'),
-    ...shorthands.gap('16px'),
+    padding: '32px',
+    gap: '16px',
     textAlign: 'center',
   },
   cardIcon: {
@@ -75,7 +75,7 @@ const useStyles = makeStyles({
   cardFooter: {
     display: 'flex',
     justifyContent: 'center',
-    ...shorthands.padding('16px', '32px'),
+    padding: '16px 32px',
   },
 });
 

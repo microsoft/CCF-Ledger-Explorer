@@ -19,7 +19,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: '100%',
     flexDirection: 'column',
-    ...shorthands.gap('16px'),
+    gap: '16px',
   },
   errorContainer: {
     display: 'flex',
@@ -27,7 +27,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: '100%',
     flexDirection: 'column',
-    ...shorthands.gap('16px'),
+    gap: '16px',
     color: tokens.colorPaletteRedForeground1,
   },
 });
