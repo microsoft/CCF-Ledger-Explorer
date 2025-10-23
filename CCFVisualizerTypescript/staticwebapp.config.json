@@ -2,5 +2,9 @@
     "navigationFallback": {
         "rewrite": "/index.html",
         "exclude": ["/assets/*"]
+    },
+    "globalHeaders": {
+        "Cross-Origin-Embedder-Policy": "require-corp",
+        "Cross-Origin-Opener-Policy": "same-origin"
     }
 }
