@@ -2,8 +2,6 @@ import { test, expect } from '@playwright/test';
 import path from 'node:path';
 
 const testfilepath = import.meta.url.replace('file://', '');
-console.log('import.meta.url', import.meta.url);
-console.log('testfilepath', testfilepath);
 
 test('main page has title', async ({ page }) => {
   await page.goto('/');
