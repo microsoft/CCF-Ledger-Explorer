@@ -1,6 +1,6 @@
 // Service for comparing write receipts against ledger data
 
-import { CCFDatabase } from '../database/ccf-database';
+import { CCFDatabase } from '../database';
 import type { WriteReceiptVerificationResult } from '../types/write-receipt-types';
 
 export interface LedgerComparisonResult {

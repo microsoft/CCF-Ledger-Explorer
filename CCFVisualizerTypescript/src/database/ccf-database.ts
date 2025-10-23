@@ -1,7 +1,7 @@
 // Database layer using @sqlite.org/sqlite-wasm with OPFS via Web Worker
 // Handles persistent storage of parsed CCF ledger data
 
-import { DatabaseWorkerClient } from './database-worker-client';
+import { DatabaseWorkerClient } from './worker/worker-client';
 import type { Transaction, LedgerKeyValue, DatabaseTransaction } from '../types/ccf-types';
 import { cborArrayToText } from '../parser/cose-cbor-to-text';
 

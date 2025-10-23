@@ -2,7 +2,7 @@
 // Provides state management for the application
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CCFDatabase } from '../database/ccf-database';
+import { CCFDatabase } from '../database';
 import { getStorageQuota, checkStorageCapacity, estimateDatabaseSize } from '../utils/storage-quota';
 import { verificationService } from '../services/verification-service';
 

@@ -1,7 +1,7 @@
 // Simplified Verification Web Worker - Database-based approach with browser storage for progress
 
 import { MerkleTree, toHexStringLower, areByteArraysEqual, hexStringToBytes } from '../utils/merkle-tree';
-import { CCFDatabase } from '../database/ccf-database';
+import { CCFDatabase } from '../database';
 import type { 
   WorkerInMessage, 
   WorkerOutMessage,
