@@ -193,7 +193,7 @@ self.onmessage = async (event: MessageEvent) => {
         
         log(`Parsed ${transactionCount} transactions, now bulk inserting...`);
         
-        // Prepare statements for bulk insert
+        // Prepare statements once (outside try block for proper cleanup)
         const txStmt = db.prepare(`
           INSERT INTO transactions (
             sequence_no, file_id, version, flags, size,
@@ -212,39 +212,48 @@ self.onmessage = async (event: MessageEvent) => {
           VALUES (?, ?, ?, ?)
         `);
         
-        // Bulk insert in a single transaction
+        // Bulk insert in a single transaction using the fastest method
         db.exec('BEGIN IMMEDIATE TRANSACTION');
         
         try {
-          // Insert all transactions
+          // Insert all transactions - use bind + step pattern for better performance
           log(`Inserting ${txBinds.length} transactions...`);
-          for (const bind of txBinds) {
+          for (let i = 0; i < txBinds.length; i++) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            txStmt.bind(bind as any);
-            txStmt.stepReset();
+            txStmt.bind(txBinds[i] as any).step();
+            txStmt.reset();
+            
+            // Progress logging every 1000 inserts
+            if ((i + 1) % 1000 === 0) {
+              log(`Inserted ${i + 1}/${txBinds.length} transactions...`);
+            }
           }
           
           // Insert all writes
           log(`Inserting ${writeBinds.length} writes...`);
-          for (const bind of writeBinds) {
+          for (let i = 0; i < writeBinds.length; i++) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            writeStmt.bind(bind as any);
-            writeStmt.stepReset();
+            writeStmt.bind(writeBinds[i] as any).step();
+            writeStmt.reset();
+            
+            if ((i + 1) % 5000 === 0) {
+              log(`Inserted ${i + 1}/${writeBinds.length} writes...`);
+            }
           }
           
           // Insert all deletes
           if (deleteBinds.length > 0) {
             log(`Inserting ${deleteBinds.length} deletes...`);
-            for (const bind of deleteBinds) {
+            for (let i = 0; i < deleteBinds.length; i++) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              deleteStmt.bind(bind as any);
-              deleteStmt.stepReset();
+              deleteStmt.bind(deleteBinds[i] as any).step();
+              deleteStmt.reset();
             }
           }
           
           db.exec('COMMIT');
           
-          // Finalize statements
+          // Finalize statements after successful commit
           txStmt.finalize();
           writeStmt.finalize();
           deleteStmt.finalize();
@@ -254,9 +263,14 @@ self.onmessage = async (event: MessageEvent) => {
           result = { fileId, transactionCount };
         } catch (err) {
           db.exec('ROLLBACK');
-          txStmt.finalize();
-          writeStmt.finalize();
-          deleteStmt.finalize();
+          // Always finalize statements even on error
+          try {
+            txStmt.finalize();
+            writeStmt.finalize();
+            deleteStmt.finalize();
+          } catch (finalizeErr) {
+            log('Error finalizing statements:', finalizeErr);
+          }
           throw err;
         }
         
@@ -288,9 +302,9 @@ self.onmessage = async (event: MessageEvent) => {
         // Optimized batch execution using prepared statements
         db.exec('BEGIN IMMEDIATE TRANSACTION');
         
+        const stmtMap = new Map();
+        
         try {
-          const stmtMap = new Map();
-          
           for (const item of payload.statements) {
             // Reuse prepared statements for the same SQL
             if (!stmtMap.has(item.sql)) {
@@ -299,20 +313,33 @@ self.onmessage = async (event: MessageEvent) => {
             
             const stmt = stmtMap.get(item.sql);
             if (item.bind && item.bind.length > 0) {
-              stmt.bind(item.bind);
+              // Use bind().step() pattern instead of stepReset()
+              stmt.bind(item.bind).step();
+              stmt.reset();
+            } else {
+              stmt.step();
+              stmt.reset();
             }
-            stmt.stepReset();
           }
           
-          // Finalize all prepared statements
+          db.exec('COMMIT');
+          
+          // Finalize all prepared statements after commit
           for (const stmt of stmtMap.values()) {
             stmt.finalize();
           }
           
-          db.exec('COMMIT');
           result = { success: true };
         } catch (err) {
           db.exec('ROLLBACK');
+          // Finalize all prepared statements even on error
+          for (const stmt of stmtMap.values()) {
+            try {
+              stmt.finalize();
+            } catch (finalizeErr) {
+              log('Error finalizing statement:', finalizeErr);
+            }
+          }
           throw err;
         }
         break;

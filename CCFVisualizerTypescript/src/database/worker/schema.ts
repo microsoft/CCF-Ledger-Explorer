@@ -6,6 +6,33 @@ import type { Database as SQLiteDB } from '@sqlite.org/sqlite-wasm';
 // Schema version for future migrations
 export const SCHEMA_VERSION = 1;
 
+// Performance optimization PRAGMAs for OPFS database
+export const PERFORMANCE_PRAGMAS = [
+  // Use WAL mode for better concurrent access and performance
+  'PRAGMA journal_mode = WAL',
+  
+  // Normal synchronous mode is safe with WAL and much faster
+  'PRAGMA synchronous = NORMAL',
+  
+  // Increase cache size to 10MB (negative value = KB)
+  'PRAGMA cache_size = -10000',
+  
+  // Use memory for temp tables
+  'PRAGMA temp_store = MEMORY',
+  
+  // Enable memory-mapped I/O (64MB)
+  'PRAGMA mmap_size = 67108864',
+  
+  // Larger page size for better performance with larger databases
+  'PRAGMA page_size = 8192',
+  
+  // Optimize locking mode for single connection
+  'PRAGMA locking_mode = EXCLUSIVE',
+  
+  // Auto-vacuum to prevent fragmentation
+  'PRAGMA auto_vacuum = INCREMENTAL',
+];
+
 // Table creation SQL statements
 export const SCHEMA_STATEMENTS = [
   // Ledger files table
@@ -59,11 +86,14 @@ export const SCHEMA_STATEMENTS = [
 
   // Indexes for better query performance
   `CREATE INDEX IF NOT EXISTS idx_transactions_file_id ON transactions(file_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_transactions_tx_id ON transactions(transaction_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_transactions_entry_type ON transactions(entry_type)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_writes_sequence_no ON kv_writes(sequence_no)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_writes_map_key ON kv_writes(map_name, key_name)`,
-  `CREATE INDEX IF NOT EXISTS idx_kv_writes_value_text ON kv_writes(value_text)`,
+  `CREATE INDEX IF NOT EXISTS idx_kv_writes_map_name ON kv_writes(map_name)`,
   `CREATE INDEX IF NOT EXISTS idx_kv_deletes_sequence_no ON kv_deletes(sequence_no)`,
-  `CREATE INDEX IF NOT EXISTS idx_kv_deletes_map_key ON kv_deletes(map_name, key_name)`
+  `CREATE INDEX IF NOT EXISTS idx_kv_deletes_map_key ON kv_deletes(map_name, key_name)`,
+  `CREATE INDEX IF NOT EXISTS idx_kv_deletes_map_name ON kv_deletes(map_name)`
 ];
 
 // Tables to drop in correct order (child tables first to avoid FK violations)
@@ -81,6 +111,19 @@ export function createTables(db: SQLiteDB, logger?: { log: (msg: string) => void
   logger?.log('Creating database tables...');
   
   try {
+    // Apply performance PRAGMAs first (before creating tables)
+    logger?.log('Applying performance optimizations...');
+    for (const pragma of PERFORMANCE_PRAGMAS) {
+      try {
+        db.exec(pragma);
+        logger?.log(`Applied: ${pragma}`);
+      } catch (err) {
+        // Some PRAGMAs might not be available or fail, log but continue
+        logger?.log(`Warning: Could not apply ${pragma}: ${err}`);
+      }
+    }
+    
+    // Create tables
     for (const stmt of SCHEMA_STATEMENTS) {
       db.exec(stmt);
     }
