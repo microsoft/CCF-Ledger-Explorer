@@ -25,7 +25,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AddFilesWizard } from './AddFilesWizard';
 
-import { CCFDatabase } from '../database/ccf-database';
+import { CCFDatabase } from '../database';
 import { useAllTransactionsCount } from '../hooks/use-ccf-data';
 import { useConfig } from '../pages/ConfigPage';
 import { useVerification } from '../hooks/use-verification';

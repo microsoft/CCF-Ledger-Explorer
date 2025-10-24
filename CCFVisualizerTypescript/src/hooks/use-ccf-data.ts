@@ -2,9 +2,7 @@
 // Provides state management for the application
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CCFDatabase } from '../database/ccf-database';
-import { LedgerChunkV2 } from '../parser/ledger-chunk';
-import type { Transaction } from '../types/ccf-types';
+import { CCFDatabase } from '../database';
 import { getStorageQuota, checkStorageCapacity, estimateDatabaseSize } from '../utils/storage-quota';
 import { verificationService } from '../services/verification-service';
 
@@ -200,49 +198,38 @@ export const useUploadLedgerFile = () => {
     mutationFn: async (file: File): Promise<{ fileId: number; transactionCount: number }> => {
       const db = await getDatabase();
       
+      console.log(`[Upload] Starting upload for ${file.name}`);
+      
       // Read file into ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       
-      // Insert file record
-      const fileId = await db.insertLedgerFile(file.name, file.size);
+      // Transfer the ArrayBuffer to the worker for processing
+      // The worker will parse and insert everything
+      console.log(`[Upload] Transferring ${file.name} to worker for processing...`);
+      const result = await db.insertLedgerFileWithData(file.name, file.size, arrayBuffer);
       
-      // Parse ledger
-      const ledgerChunk = new LedgerChunkV2(file.name, arrayBuffer);
-      let transactionCount = 0;
-
-      // Process transactions in batches to avoid blocking the UI
-      const batchSize = 100;
-      const transactions: Transaction[] = [];
+      console.log(`[Upload] Completed: ${result.transactionCount} transactions from ${file.name}`);
       
-      for await (const transaction of ledgerChunk.readAllTransactions()) {
-        transactions.push(transaction);
-        
-        if (transactions.length >= batchSize) {
-          // Process batch
-          for (const tx of transactions) {
-            await db.insertTransaction(fileId, tx);
-            transactionCount++;
-          }
-          transactions.length = 0; // Clear array
-          
-          // Allow UI to update
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-      }
-      
-      // Process remaining transactions
-      for (const tx of transactions) {
-        await db.insertTransaction(fileId, tx);
-        transactionCount++;
-      }
-
-      await db.save();
-      return { fileId, transactionCount };
+      return result;
     },
     onSuccess: () => {
-      // Invalidate all queries to refresh the UI
+      // Final comprehensive invalidation after upload completes
       queryClient.invalidateQueries({ queryKey: queryKeys.ledgerFiles });
       queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.enhancedStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ccfTables });
+      // Invalidate all transaction-related queries
+      queryClient.invalidateQueries({ predicate: (query) => 
+        Array.isArray(query.queryKey) && 
+        (query.queryKey[0] === 'transactions' || 
+         query.queryKey[0] === 'fileTransactions' || 
+         query.queryKey[0] === 'fileTransactionsCount' ||
+         query.queryKey[0] === 'transactionById')
+      });
+      // Invalidate all search queries
+      queryClient.invalidateQueries({ predicate: (query) => 
+        Array.isArray(query.queryKey) && (query.queryKey[0] === 'search' || query.queryKey[0] === 'searchByKeyOrValue')
+      });
     },
     onError: (error) => {
       console.error('Failed to upload and parse ledger file:', error);
@@ -265,7 +252,11 @@ export const useDeleteLedgerFile = () => {
       // Invalidate all queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: queryKeys.ledgerFiles });
       queryClient.invalidateQueries({ queryKey: queryKeys.stats });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.enhancedStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ccfTables });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        Array.isArray(query.queryKey) && query.queryKey[0] === 'transactions'
+      });
     },
     onError: (error) => {
       console.error('Failed to delete ledger file:', error);
@@ -288,8 +279,9 @@ export const useClearAllData = () => {
       verificationService.clearSavedProgress();
     },
     onSuccess: () => {
-      // Invalidate all queries to refresh the UI
-      queryClient.invalidateQueries();
+      // Reset all queries to clear cached data and force re-fetch
+      // This ensures the UI immediately shows empty state
+      queryClient.resetQueries();
     },
     onError: (error) => {
       console.error('Failed to clear all data:', error);
@@ -299,6 +291,7 @@ export const useClearAllData = () => {
 
 /**
  * Hook to drop the entire database (complete reset)
+ * Uses the nuclear option to delete the OPFS database file completely
  */
 export const useDropDatabase = () => {
   const queryClient = useQueryClient();
@@ -306,14 +299,16 @@ export const useDropDatabase = () => {
   return useMutation({
     mutationFn: async () => {
       const db = await getDatabase();
-      await db.dropDatabase();
+      // Nuclear option: completely delete and recreate the OPFS database file
+      await db.deleteAndRecreateDatabase();
       
       // Clear verification progress since database is reset
       verificationService.clearSavedProgress();
     },
     onSuccess: () => {
-      // Invalidate all queries to refresh the UI
-      queryClient.invalidateQueries();
+      // Reset all queries to clear cached data and force re-fetch
+      // This ensures the UI immediately shows empty state
+      queryClient.resetQueries();
     },
     onError: (error) => {
       console.error('Failed to drop database:', error);
@@ -330,16 +325,28 @@ export const useFileDrop = () => {
   const handleFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     
-    for (const file of fileArray) {
+    console.log(`[useFileDrop] Processing ${fileArray.length} files`);
+    
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      console.log(`[useFileDrop] Processing file ${i + 1}/${fileArray.length}: ${file.name} (${file.size} bytes)`);
+      
       // Check if file appears to be a ledger file
       if (file.size > 0) {
         try {
-          await uploadMutation.mutateAsync(file);
+          const result = await uploadMutation.mutateAsync(file);
+          console.log(`[useFileDrop] Successfully processed ${file.name}:`, result);
         } catch (error) {
-          console.error(`Failed to process file ${file.name}:`, error);
+          console.error(`[useFileDrop] Failed to process file ${file.name}:`, error);
+          // Re-throw to stop processing more files if there's an error
+          throw error;
         }
+      } else {
+        console.warn(`[useFileDrop] Skipping empty file: ${file.name}`);
       }
     }
+    
+    console.log(`[useFileDrop] Completed processing all ${fileArray.length} files`);
   };
 
   const handleDrop = (event: React.DragEvent<HTMLElement>) => {
