@@ -51,8 +51,8 @@ const useStyles = makeStyles({
     gap: '24px',
     padding: '24px',
     width: '100%',
-    maxWidth: '1200px',        // Baseline width token
-    margin: '0 auto',          // Center the content
+    maxWidth: '1200px',
+    margin: '0 auto',
     flexDirection: 'column',
   },
   loadingContainer: {
