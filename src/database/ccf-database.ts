@@ -14,6 +14,9 @@ const DecodeCborTables = [
   "public:scitt.entry",
 ];
 
+type TableLatestStateSortColumn = 'sequence' | 'transactionId' | 'keyName' | 'value';
+type TableLatestStateSortDirection = 'asc' | 'desc';
+
 export class CCFDatabase {
   private client: DatabaseWorkerClient | null = null;
 
@@ -890,7 +893,14 @@ export class CCFDatabase {
     }));
   }
 
-  async getTableLatestState(mapName: string, limit = 100, offset = 0, searchQuery?: string): Promise<Array<{
+  async getTableLatestState(
+    mapName: string,
+    limit = 100,
+    offset = 0,
+    searchQuery?: string,
+    sortColumn: TableLatestStateSortColumn = 'sequence',
+    sortDirection: TableLatestStateSortDirection = 'asc',
+  ): Promise<Array<{
     keyName: string;
     value: Uint8Array | null;
     version: number;
@@ -952,8 +962,36 @@ export class CCFDatabase {
       params.push(searchPattern, searchPattern);
     }
 
+    const directionKeyword = sortDirection === 'desc' ? 'DESC' : 'ASC';
+    const orderExpressions: string[] = [];
+
+    switch (sortColumn) {
+      case 'sequence':
+        orderExpressions.push(`lo.sequence_no ${directionKeyword}`);
+        break;
+      case 'transactionId':
+        orderExpressions.push('CASE WHEN lo.transaction_id IS NULL THEN 1 ELSE 0 END ASC');
+        orderExpressions.push(`lo.transaction_id COLLATE NOCASE ${directionKeyword}`);
+        break;
+      case 'value':
+        orderExpressions.push('CASE WHEN lo.value_text IS NULL THEN 1 ELSE 0 END ASC');
+        orderExpressions.push(`lo.value_text COLLATE NOCASE ${directionKeyword}`);
+        break;
+      default:
+        orderExpressions.push(`lo.key_name COLLATE NOCASE ${directionKeyword}`);
+        break;
+    }
+
+    if (sortColumn !== 'sequence') {
+      orderExpressions.push('lo.sequence_no ASC');
+    }
+
+    if (sortColumn !== 'keyName' || sortDirection === 'desc') {
+      orderExpressions.push('lo.key_name COLLATE NOCASE ASC');
+    }
+
     sql += `
-      ORDER BY lo.key_name
+      ORDER BY ${orderExpressions.join(', ')}
       LIMIT ? OFFSET ?
     `;
 
