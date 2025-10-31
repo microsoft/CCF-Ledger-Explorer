@@ -23,7 +23,7 @@ const initializeSQLite = async () => {
     // Try to create database with OPFS, fall back to transient if not available
     let db: SQLiteDB;
     if ('opfs' in sqlite3) {
-      db = new sqlite3.oo1.OpfsDb('/ccf-ledger.sqlite3');
+      db = new sqlite3.oo1.OpfsDb('/ccf-ledger.sqlite3', 'c');
       log('OPFS is available, created persisted database at', db.filename);
     } else {
       db = new sqlite3.oo1.DB('/ccf-ledger.sqlite3', 'ct');
@@ -36,7 +36,16 @@ const initializeSQLite = async () => {
     return db;
   } catch (err) {
     error('Failed to initialize SQLite:', err);
+    if (db) {
+      try {
+        db.close();
+      } catch (closeErr) {
+        log('Error closing database after failed init:', closeErr);
+      }
+    }
     throw err;
+  } finally {
+    log('SQLite initialization process completed');
   }
 };
 
