@@ -48,8 +48,8 @@ const useStyles = makeStyles({
   },
   cardsContainer: {
     display: 'flex',
-    gap: '24px',
-    padding: '24px',
+    gap: tokens.spacingVerticalXXL,
+    padding: tokens.spacingVerticalXXL,
     width: '100%',
     flexDirection: 'column',
   },
@@ -97,6 +97,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '4px',
     marginRight: '12px',
+  },
+  actionButtons: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    marginTop: tokens.spacingVerticalM,
   },
   statusMessage: {
     display: 'flex',
@@ -182,7 +188,7 @@ export const ConfigPage: React.FC = () => {
 
               { allTransactionsCount && allTransactionsCount > 0 ? <Text size={200}>Imported transactions: {allTransactionsCount}</Text> : <Text size={200}>No imported data found</Text> }
               
-              <div>
+              <div className={styles.actionButtons}>
                 {/* Upload Files Button */}
                 <Button
                   appearance="outline"
