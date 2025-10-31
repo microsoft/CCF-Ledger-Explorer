@@ -18,7 +18,12 @@ const getDatabase = async (): Promise<CCFDatabase> => {
       filename: 'ccf-ledger.db',
       useOpfs: true,
     });
-    await dbInstance.initialize();
+    try {
+      await dbInstance.initialize();
+    } catch (error) {
+      alert('Could not open local database. Please reload the page or close other windows or tabs that also use this page. ' + error);
+      throw error;
+    }
   }
   return dbInstance;
 };
