@@ -280,7 +280,18 @@ export const FileUploadArea: React.FC = () => {
     // Parse selected files
     const selectedFileInfos = committedFiles.map(file => parseLedgerFilename(file.name));
     
-    // Categorize files: new vs already imported
+    // Check for invalid filenames FIRST (before duplicate detection)
+    const invalidFiles = selectedFileInfos.filter(info => !info.isValid);
+    if (invalidFiles.length > 0) {
+      // Show validation error for invalid filenames
+      const validation = validateLedgerSequence(committedFiles, existingFileInfos);
+      setValidationResult(validation);
+      setPendingFiles([]);
+      setSelectedFilesInfo(null);
+      return;
+    }
+    
+    // Categorize files: new vs already imported (only valid files at this point)
     const existingFilenames = new Set(existingFileInfos.map(f => f.filename));
     const newFiles = selectedFileInfos.filter(info => !existingFilenames.has(info.filename));
     const skippedFiles = selectedFileInfos.filter(info => existingFilenames.has(info.filename));
