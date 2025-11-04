@@ -171,11 +171,44 @@ export const VerificationComponent: React.FC = () => {
               </div>
             )}
 
+            {/* Success State */}
+            {progress?.status === 'completed' && !error && (
+              <MessageBar intent="success">
+                <MessageBarBody>
+                  <div role="status" aria-live="polite">
+                    Verification complete. All {progress.totalTransactions.toLocaleString()} transactions passed integrity checks.
+                  </div>
+                </MessageBarBody>
+              </MessageBar>
+            )}
+
             {/* Error Display */}
             {error && (
               <MessageBar intent="error">
                 <MessageBarBody>
-                  <strong>Verification Error:</strong> {error}
+                  <strong>Verification failed:</strong> {error}
+                  <div style={{ marginTop: tokens.spacingVerticalS }}>
+                    <strong>What to try:</strong>
+                    <ul style={{ 
+                      marginTop: tokens.spacingVerticalXS, 
+                      marginBottom: 0,
+                      paddingLeft: tokens.spacingHorizontalL 
+                    }}>
+                      <li>Refresh the page and start verification again.</li>
+                      <li>Make sure you're using Chrome, Edge, or Firefox.</li>
+                      <li>Check that your ledger files aren't corrupted.</li>
+                      <li>
+                        <a 
+                          href="https://github.com/microsoft/CCF-Ledger-Explorer/issues" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ color: 'inherit', textDecoration: 'underline' }}
+                        >
+                          Report this issue
+                        </a> if the problem continues.
+                      </li>
+                    </ul>
+                  </div>
                 </MessageBarBody>
               </MessageBar>
             )}
