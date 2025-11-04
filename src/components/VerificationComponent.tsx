@@ -32,8 +32,9 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalL,
-    maxWidth: '800px',
-    margin: '0 auto'
+    maxWidth: '1200px',
+    margin: '0 auto',
+    width: '100%'
   },
   card: {
     width: '100%'
