@@ -159,149 +159,25 @@ export const MstReceiptVerificationPage: React.FC = () => {
         {/* Main Content Card */}
         <Card className={styles.infoCard}>
           <div className={styles.cardContent}>
-            {/* About MST Section */}
-            <div className={styles.section}>
-              <Text className={styles.sectionTitle}>
-                <Info24Regular className={styles.sectionIcon} />
-                About MST Ledgers
-              </Text>
-              <Text>
-                MST (Merkle Service Tree) is a ledger structure used in Azure Confidential Ledger 
-                that provides enhanced performance and scalability for high-throughput scenarios. 
-                Unlike ACL (Azure Confidential Ledger) receipts, MST receipts require specialized 
-                verification logic provided by the Confidential Consortium Framework (CCF) SDK.
-              </Text>
-            </div>
-
-            {/* Verification Requirements */}
-            <div className={styles.section}>
-              <Text className={styles.sectionTitle}>
-                <ShieldCheckmark24Regular className={styles.sectionIcon} />
-                Verification Requirements
-              </Text>
-              <Text>
-                To verify MST ledger receipts, you will need:
-              </Text>
-              <ul className={styles.bulletList}>
-                <li className={styles.bulletItem}>
-                  <Text weight="semibold">CCF .NET SDK:</Text> The official SDK provides native 
-                  support for MST receipt verification
-                </li>
-                <li className={styles.bulletItem}>
-                  <Text weight="semibold">Service Certificate:</Text> The network certificate 
-                  from your Azure Confidential Ledger instance
-                </li>
-                <li className={styles.bulletItem}>
-                  <Text weight="semibold">Write Receipt:</Text> The JSON receipt returned from 
-                  the MST ledger transaction
-                </li>
-                <li className={styles.bulletItem}>
-                  <Text weight="semibold">Transaction ID:</Text> The unique identifier for the 
-                  transaction you want to verify
-                </li>
-              </ul>
-            </div>
-
-            {/* SDK Usage Section */}
+            {/* SDK Reference Section */}
             <div className={styles.section}>
               <Text className={styles.sectionTitle}>
                 <Code24Regular className={styles.sectionIcon} />
-                Using the CCF .NET SDK
+                Verification with Azure SDK for .NET
               </Text>
               <Text>
-                Here's a basic example of verifying an MST receipt using the CCF .NET SDK:
+                To verify MST transparent statement receipts, please refer to the official Azure SDK for .NET documentation:
               </Text>
-              <div className={styles.codeBlock}>
-                <pre style={{ margin: 0 }}>
-{`using CCF.ReceiptVerification;
-
-// Load your service certificate
-var serviceCert = new X509Certificate2("path/to/service_cert.pem");
-
-// Parse the receipt JSON
-var receipt = ReceiptParser.ParseReceipt(receiptJson);
-
-// Verify the receipt
-var verifier = new ReceiptVerifier(serviceCert);
-var result = verifier.VerifyReceipt(receipt, transactionId);
-
-if (result.IsValid)
-{
-    Console.WriteLine("Receipt verified successfully!");
-    Console.WriteLine($"Node ID: {result.NodeId}");
-    Console.WriteLine($"Sequence Number: {result.SequenceNumber}");
-}
-else
-{
-    Console.WriteLine($"Verification failed: {result.ErrorMessage}");
-}`}
-                </pre>
+              <div style={{ marginTop: tokens.spacingVerticalM }}>
+                <Link 
+                  href="https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/confidentialledger/Azure.Security.CodeTransparency/README.md" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={styles.link}
+                >
+                  Azure.Security.CodeTransparency SDK Documentation
+                </Link>
               </div>
-            </div>
-
-            {/* Resources Section */}
-            <div className={styles.section}>
-              <Text className={styles.sectionTitle}>
-                Additional Resources
-              </Text>
-              <ul className={styles.bulletList}>
-                <li className={styles.bulletItem}>
-                  <Link 
-                    href="https://microsoft.github.io/CCF/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.link}
-                  >
-                    CCF Documentation
-                  </Link> - Official Confidential Consortium Framework documentation
-                </li>
-                <li className={styles.bulletItem}>
-                  <Link 
-                    href="https://github.com/microsoft/CCF" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.link}
-                  >
-                    CCF GitHub Repository
-                  </Link> - Source code and examples
-                </li>
-                <li className={styles.bulletItem}>
-                  <Link 
-                    href="https://learn.microsoft.com/azure/confidential-ledger/overview" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.link}
-                  >
-                    Azure Confidential Ledger Overview
-                  </Link> - Understanding ACL and MST ledgers
-                </li>
-                <li className={styles.bulletItem}>
-                  <Link 
-                    href="https://learn.microsoft.com/azure/confidential-ledger/write-transaction-receipts" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={styles.link}
-                  >
-                    Write Transaction Receipts
-                  </Link> - Learn about receipt structures and verification
-                </li>
-              </ul>
-            </div>
-
-            {/* Future Plans */}
-            <div className={styles.section}>
-              <MessageBar intent="info">
-                <MessageBarBody>
-                  <Text weight="semibold">Future Enhancement:</Text> We're planning to integrate 
-                  MST receipt verification directly into this web interface. In the meantime, 
-                  please use the CCF .NET SDK for production verification workflows. For ACL 
-                  receipt verification, visit the{' '}
-                  <Link href="/write-receipt" className={styles.link}>
-                    ACL Receipt Verification
-                  </Link>{' '}
-                  page.
-                </MessageBarBody>
-              </MessageBar>
             </div>
           </div>
         </Card>

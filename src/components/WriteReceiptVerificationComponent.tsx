@@ -331,21 +331,10 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
           <MessageBarBody>
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
-                <Text weight="semibold">ACL Receipt Verification Only</Text>
+                <Text weight="semibold">ACL Receipt Verification</Text>
               </div>
               <Text>
-                This page verifies <strong>Azure Confidential Ledger (ACL)</strong> write transaction receipts using Merkle tree proofs. 
-                For MST (Merkle Service Tree) ledger verification, please use the CCF .NET SDK as described in the{' '}
-                <a 
-                  href="https://microsoft.github.io/CCF/main/use_apps/verify_tx.html" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{ color: '#0078D4', textDecoration: 'none' }}
-                  onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                  onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
-                >
-                  CCF documentation
-                </a>.
+                This page verifies <strong>Azure Confidential Ledger (ACL)</strong> write transaction receipts using Merkle tree proofs.
               </Text>
             </div>
           </MessageBarBody>
@@ -382,7 +371,7 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
                       Step 1: Get the network certificate
                     </Text>
                     <Text block style={{ marginBottom: tokens.spacingVerticalXS }}>
-                      Retrieve the service identity certificate for your ledger instance:
+                      Retrieve the service identity certificate for your ledger instance by accessing the identity service URL:
                     </Text>
                     <div style={{
                       backgroundColor: tokens.colorNeutralBackground2,
@@ -393,19 +382,16 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
                       overflowX: 'auto'
                     }}>
                       <Text block style={{ color: tokens.colorNeutralForeground2 }}>
-                        # Using Python SDK
+                        # Example URL format:
                       </Text>
                       <Text block>
-                        from azure.confidentialledger.certificate import ConfidentialLedgerCertificateClient
+                        https://identity.confidential-ledger.core.azure.com/ledgerIdentity/YOUR_LEDGER_NAME
                       </Text>
-                      <Text block>
-                        identity_client = ConfidentialLedgerCertificateClient("https://identity.confidential-ledger.core.azure.com")
+                      <Text block style={{ marginTop: tokens.spacingVerticalS }}>
+                        {' '}
                       </Text>
-                      <Text block>
-                        network_identity = identity_client.get_ledger_identity(ledger_id="your-ledger-name")
-                      </Text>
-                      <Text block>
-                        certificate = network_identity["ledgerTlsCertificate"]
+                      <Text block style={{ color: tokens.colorNeutralForeground2 }}>
+                        # The response contains the ledgerTlsCertificate field
                       </Text>
                     </div>
                   </div>
@@ -445,16 +431,6 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
                       Additional resources
                     </Text>
                     <ul style={{ margin: 0, paddingLeft: tokens.spacingHorizontalXL }}>
-                      <li>
-                        <a 
-                          href="https://learn.microsoft.com/en-us/azure/confidential-ledger/write-transaction-receipts" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          style={{ color: '#0078D4', textDecoration: 'none' }}
-                        >
-                          Azure Confidential Ledger write transaction receipts
-                        </a>
-                      </li>
                       <li>
                         <a 
                           href="https://learn.microsoft.com/en-us/azure/confidential-ledger/quickstart-python" 
