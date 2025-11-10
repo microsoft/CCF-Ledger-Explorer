@@ -26,7 +26,6 @@ import remarkGfm from 'remark-gfm';
 import { AddFilesWizard } from './AddFilesWizard';
 
 import { CCFDatabase } from '../database';
-import { useAllTransactionsCount } from '../hooks/use-ccf-data';
 import { useConfig } from '../pages/ConfigPage';
 import { useVerification } from '../hooks/use-verification';
 import type { WriteReceipt } from '../types/write-receipt-types';
@@ -83,7 +82,7 @@ export interface ChatMessage {
 }
 
 interface AIChatProps {
-  database: CCFDatabase;
+  database?: CCFDatabase;
   onChatStateChange?: (hasActiveChat: boolean) => void;
   onRegisterClearChat?: (clearFn: (() => void) | null) => void;
   clearChatFunction?: (() => void) | null;
@@ -499,7 +498,19 @@ export const AIChat: React.FC<AIChatProps> = ({
     } catch { return []; }
   });
   const [currentMessage, setCurrentMessage] = useState('');
-  const { data: allTransactionsCount } = useAllTransactionsCount();
+  const [allTransactionsCount, setAllTransactionsCount] = useState(0);
+
+  useEffect(() => {
+    if (database) {
+      database.getAllTransactionsCount().then(count => {
+        setAllTransactionsCount(count);
+      }).catch(error => {
+        console.error('Failed to get transaction count:', error);
+        setAllTransactionsCount(0);
+      });
+    }
+  }, [database]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -588,10 +599,12 @@ export const AIChat: React.FC<AIChatProps> = ({
           const scrollingHeight = chatMessagesContainer.clientHeight;
           const targetBottomPosition = scrollingHeight - 400;
           const scrollAmount = elementBottom - targetBottomPosition;
-          chatMessagesContainer.scrollBy({
-            top: scrollAmount,
-            behavior: 'smooth'
-          });
+          if (typeof chatMessagesContainer.scrollBy === 'function') {
+            chatMessagesContainer.scrollBy({
+              top: scrollAmount,
+              behavior: 'smooth'
+            });
+          }
         }
       }
     }
