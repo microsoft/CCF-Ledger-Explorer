@@ -26,9 +26,9 @@ import remarkGfm from 'remark-gfm';
 import { AddFilesWizard } from './AddFilesWizard';
 
 import { CCFDatabase } from '../database';
-import { useAllTransactionsCount } from '../hooks/use-ccf-data';
 import { useConfig } from '../pages/ConfigPage';
 import { useVerification } from '../hooks/use-verification';
+import { getDatabase } from '../hooks/use-ccf-data';
 import type { WriteReceipt } from '../types/write-receipt-types';
 import { useDownloadMstFiles } from './MstLedgerImportView';
 import type { SavedProgress } from '../services/verification-service';
@@ -83,7 +83,7 @@ export interface ChatMessage {
 }
 
 interface AIChatProps {
-  database: CCFDatabase;
+  database?: CCFDatabase;
   onChatStateChange?: (hasActiveChat: boolean) => void;
   onRegisterClearChat?: (clearFn: (() => void) | null) => void;
   clearChatFunction?: (() => void) | null;
@@ -261,6 +261,13 @@ const useStyles = makeStyles({
     fontSize: '14px',
     color: tokens.colorNeutralForeground3,
     listStyleType: 'none',
+  },
+  annotationLink: {
+    color: tokens.colorBrandForeground1,
+    textDecoration: 'none',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
   },
   sqlSection: {
     margin: '12px 0 0 0',
@@ -492,7 +499,19 @@ export const AIChat: React.FC<AIChatProps> = ({
     } catch { return []; }
   });
   const [currentMessage, setCurrentMessage] = useState('');
-  const { data: allTransactionsCount } = useAllTransactionsCount();
+  const [allTransactionsCount, setAllTransactionsCount] = useState(0);
+
+  useEffect(() => {
+    if (database) {
+      database.getAllTransactionsCount().then(count => {
+        setAllTransactionsCount(count);
+      }).catch(error => {
+        console.error('Failed to get transaction count:', error);
+        setAllTransactionsCount(0);
+      });
+    }
+  }, [database]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -581,10 +600,12 @@ export const AIChat: React.FC<AIChatProps> = ({
           const scrollingHeight = chatMessagesContainer.clientHeight;
           const targetBottomPosition = scrollingHeight - 400;
           const scrollAmount = elementBottom - targetBottomPosition;
-          chatMessagesContainer.scrollBy({
-            top: scrollAmount,
-            behavior: 'smooth'
-          });
+          if (typeof chatMessagesContainer.scrollBy === 'function') {
+            chatMessagesContainer.scrollBy({
+              top: scrollAmount,
+              behavior: 'smooth'
+            });
+          }
         }
       }
     }
@@ -915,6 +936,10 @@ export const AIChat: React.FC<AIChatProps> = ({
           continue;
         }
         action.actionResult = 'MST files downloaded successfully';
+        if (!database) {
+          // make sure database is initialized after MST import
+          database = await getDatabase();
+        }
       }
     }
 
@@ -1058,6 +1083,14 @@ Please provide a clean, human-readable summary that captures the essential infor
     setError(null);
     setCurrentMessage(example);
     handleSendMessage(example);
+  };
+
+  const getAnnotationUrl = (fileId?: string) => {
+    if (!fileId || !config.baseUrl) {
+      return null;
+    }
+    const trimmedBase = config.baseUrl.replace(/\/+$/, '');
+    return `${trimmedBase}/docs/file/download/${encodeURIComponent(fileId)}`;
   };
 
   const clearChat = () => {
@@ -1281,11 +1314,23 @@ Please provide a clean, human-readable summary that captures the essential infor
                         <div className={styles.annotationsSection}>
                           <Text className={styles.annotationsHeader}>References:</Text>
                           <ul className={styles.annotationsList}>
-                            {Object.values(message.annotations).map((annotation) => (
-                              <li key={annotation.file_id} className={styles.annotationItem}>
-                                {annotation.refs && annotation.refs.length > 0 ? annotation.refs.map(r => `[${r}]`).join(', ') : ''} {annotation.filename}
-                              </li>
-                            ))}
+                            {Object.values(message.annotations).map((annotation) => {
+                              const refsText = annotation.refs && annotation.refs.length > 0 ? annotation.refs.map(r => `[${r}]`).join(', ') + ' ' : '';
+                              const annotationUrl = getAnnotationUrl(annotation.file_id);
+                              const displayName = annotation.filename || annotation.file_id || 'Referenced file';
+
+                              return (
+                                <li key={annotation.file_id} className={styles.annotationItem}>
+                                  {annotationUrl ? (
+                                    <a href={annotationUrl} className={styles.annotationLink} target="_blank" rel="noopener noreferrer">
+                                      {refsText}{displayName}
+                                    </a>
+                                  ) : (
+                                    <>{refsText}{displayName}</>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}
