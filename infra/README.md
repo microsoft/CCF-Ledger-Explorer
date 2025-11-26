@@ -8,12 +8,12 @@ To create infrastructure with the default values:
 
 ```sh
 az login ...
-az deployment sub create --name ccf-ledger-explorer-swa --location eastus2 --template-file CCF-Ledger-Explorer/infra/staticsite.bicep
+az deployment sub create --name ccf-ledger-explorer-swa --location eastus2 --template-file /infra/staticsite.bicep
 ```
 
 Create infrastructure in a different resource group:
 
 ```sh
 az login ...
-az deployment sub create --name ccf-ledger-explorer-swa --location eastus2 --template-file CCF-Ledger-Explorer/infra/staticsite.bicep --parameters resourceGroupName=my-existing-rg
+az deployment sub create --name ccf-ledger-explorer-swa --location eastus2 --template-file /infra/staticsite.bicep --parameters resourceGroupName=my-existing-rg
 ```
