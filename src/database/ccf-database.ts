@@ -24,7 +24,7 @@ type TableLatestStateSortDirection = 'asc' | 'desc';
 export class CCFDatabase {
   private client: DatabaseWorkerClient | null = null;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   constructor(_config: DatabaseConfig) {
     // Config is stored for future use if needed
   }

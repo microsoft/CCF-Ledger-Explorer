@@ -166,7 +166,7 @@ export class MstFilesService {
       for (let i = 1; i < sortedFilteredFiles.length; i++) {
         const prevFile = sortedFilteredFiles[i - 1];
         const currFile = sortedFilteredFiles[i];
-        if (currFile.startNo == prevFile.startNo && currFile.endNo >= prevFile.endNo) {
+        if (currFile.startNo === prevFile.startNo && currFile.endNo >= prevFile.endNo) {
           console.warn(`Overlapping range. Skipping ${prevFile.filename}`);
           indexesToRemove.push(i - 1);
         } else if (currFile.startNo >= prevFile.startNo && currFile.endNo <= prevFile.endNo) {
