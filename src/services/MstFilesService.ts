@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 import type { LedgerFileInfo } from '../utils/ledger-validation';
 import { parseLedgerFilename, validateLedgerSequence } from '../utils/ledger-validation';
 

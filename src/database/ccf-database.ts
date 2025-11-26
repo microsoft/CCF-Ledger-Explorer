@@ -1,5 +1,9 @@
-// Database layer using @sqlite.org/sqlite-wasm with OPFS via Web Worker
-// Handles persistent storage of parsed CCF ledger data
+/*
+ * Copyright (c) Microsoft Corporation.
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+
 
 import { DatabaseWorkerClient } from './worker/worker-client';
 import type { Transaction, LedgerKeyValue, DatabaseTransaction } from '../types/ccf-types';
