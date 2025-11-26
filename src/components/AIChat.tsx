@@ -30,7 +30,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AddFilesWizard } from './AddFilesWizard';
 
-import { CCFDatabase } from '../database';
+import type { CCFDatabase } from '../database';
 import { useConfig } from '../pages/ConfigPage';
 import { useVerification } from '../hooks/use-verification';
 import { getDatabase } from '../hooks/use-ccf-data';
@@ -1017,7 +1017,7 @@ Please provide a clean, human-readable summary that captures the essential infor
 
       const data = await response.json();
       for (const output of data.output) {
-        if (output?.role == "assistant") {
+        if (output?.role === "assistant") {
           // Process the assistant's output
           return output?.content[0]?.text;
         }

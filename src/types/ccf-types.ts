@@ -91,12 +91,12 @@ export const LEDGER_CONSTANTS: LedgerConstants = {
 // Helper functions for EntryType
 export const entryTypeHelpers = {
   hasClaims: (entryType: EntryType): boolean => {
-    return entryType == EntryType.WriteSetWithClaims ||
-                   entryType == EntryType.WriteSetWithCommitEvidenceAndClaims;
+    return entryType === EntryType.WriteSetWithClaims ||
+                   entryType === EntryType.WriteSetWithCommitEvidenceAndClaims;
   },
 
   hasCommitEvidence: (entryType: EntryType): boolean => {
-    return entryType == EntryType.WriteSetWithCommitEvidence ||
-                   entryType == EntryType.WriteSetWithCommitEvidenceAndClaims;
+    return entryType === EntryType.WriteSetWithCommitEvidence ||
+                   entryType === EntryType.WriteSetWithCommitEvidenceAndClaims;
   },
 };

@@ -305,6 +305,7 @@ function prettyCborKeyValue(parentKey: any, key: any, value: any): any[] {
             return [prettyKey, prettyPrintArbitraryCborVal(value)];
         }
         if (parentKey === 'msft-css-dev') {
+            // Reserved for future msft-css-dev specific handling
         }
         if (parentKey === 'cose_key') {
             const keyStr = key.toString();
@@ -344,7 +345,7 @@ function prettyPrintCosePayload(input: Uint8Array): object | string {
     try {
         const json = JSON.parse(text);
         return json;
-    } catch (e) {
+    } catch {
         // not json
     }
 
@@ -357,7 +358,7 @@ function prettyPrintCosePayload(input: Uint8Array): object | string {
     try {
         const decoded = decode(input);
         return prettyPrintArbitraryCborVal(decoded);
-    } catch (e) {
+    } catch {
         // not cbor
     }
 
