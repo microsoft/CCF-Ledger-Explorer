@@ -19,7 +19,7 @@ param(
     [string]$StaticWebAppName = "ccfledgerexplorer",
     
     [Parameter(Mandatory=$false)]
-    [string]$Location = "East US",
+    [string]$Location = "eastus",
     
     [Parameter(Mandatory=$false)]
     [switch]$CreateResources = $false,
