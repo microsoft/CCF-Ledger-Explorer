@@ -1,4 +1,4 @@
-# Azure Deployment Script for CCFVisualizerTypescript
+# Azure Deployment Script for CCF-Ledger-Explorer
 # This script deploys the built application to Azure Static Web Apps
 #
 # Examples:
@@ -13,13 +13,13 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [string]$ResourceGroupName = "sage-transparency-demo-rg",
+    [string]$ResourceGroupName = "ccfexplorer-demo-rg",
     
     [Parameter(Mandatory=$false)]
-    [string]$StaticWebAppName = "ccfvisualizer",
+    [string]$StaticWebAppName = "ccfledgerexplorer",
     
     [Parameter(Mandatory=$false)]
-    [string]$Location = "East US 2",
+    [string]$Location = "eastus",
     
     [Parameter(Mandatory=$false)]
     [switch]$CreateResources = $false,
