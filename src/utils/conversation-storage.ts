@@ -65,13 +65,12 @@ export const loadConversationsFromHistory = (): SavedConversation[] => {
  * @returns The remaining conversations after deletion
  */
 export const deleteConversationFromHistory = (id: string): SavedConversation[] => {
+  const conversations = loadConversationsFromHistory();
+  const remaining = conversations.filter(c => c.id !== id);
   try {
-    const conversations = loadConversationsFromHistory();
-    const remaining = conversations.filter(c => c.id !== id);
     localStorage.setItem(CONVERSATION_STORAGE_KEY, JSON.stringify(remaining));
-    return remaining;
   } catch (e) {
     console.error('Failed to delete conversation', e);
-    return [];
   }
+  return remaining;
 };
