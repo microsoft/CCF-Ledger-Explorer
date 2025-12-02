@@ -728,7 +728,6 @@ export const AIChat: React.FC<AIChatProps> = ({
             }
             return updated;
           });
-          console.log('Stream finished');
           break;
         }
 
@@ -746,7 +745,6 @@ export const AIChat: React.FC<AIChatProps> = ({
           if (dataString && dataString !== '[DONE]') {
             try {
               const data = JSON.parse(dataString);
-              console.log(data.type, data);
               if (data.type === 'response.output_text.delta') {
                 textDelta += data.delta || '';
               } else if (data.type === 'response.output_text.annotation.added') {

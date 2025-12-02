@@ -39,8 +39,7 @@ export function useVerification(): UseVerificationResult {
         setError(null);
       },
       
-      onCompleted: (data) => {
-        console.log('Verification completed:', data);
+      onCompleted: (_data) => {
         setIsRunning(false);
         setProgress(prev => prev ? { ...prev, status: 'completed' } : null);
         setError(null);
@@ -54,7 +53,6 @@ export function useVerification(): UseVerificationResult {
       },
       
       onStopped: () => {
-        console.log('Verification stopped');
         setIsRunning(false);
         setProgress(prev => prev ? { ...prev, status: 'stopped' } : null);
       }

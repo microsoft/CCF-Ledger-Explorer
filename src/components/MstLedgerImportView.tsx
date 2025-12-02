@@ -163,9 +163,6 @@ export const MstLedgerImportView: React.FC = () => {
 
     const handleVisualizeFileSelect = async (fileToVisualize: LedgerFileInfo) => {
         setSelectedFileToVisualize(fileToVisualize);
-        if (selectedLedgerFile !== null) {
-            console.log(`All Ledger files will be selected till the end Transaction: ${selectedLedgerFile.endNo}`);
-        }
         const { files: downloadedFiles, filesDownloaded } = await fileShareService.downloadLedgerFiles(fileToVisualize);
         if (downloadedFiles.length > 0) {
             handleFiles(downloadedFiles);
