@@ -4,10 +4,10 @@
  */
 
 // Main parser class
-export { LedgerChunkV2 } from './ledger-chunk.js';
+export { LedgerChunkV2 } from './ledger-chunk';
 
 // CBOR utilities
-export { cborArrayToText, uint8ArrayToHexString, uint8ArrayToB64String } from './cbor-utils.js';
+export { cborArrayToText, uint8ArrayToHexString, uint8ArrayToB64String } from './cbor-utils';
 
 // Types
 export type {
@@ -17,10 +17,10 @@ export type {
   PublicDomain,
   LedgerKeyValue,
   LedgerConstants,
-} from './types.js';
+} from './types';
 
 export {
   EntryType,
   LEDGER_CONSTANTS,
   entryTypeHelpers,
-} from './types.js';
+} from './types';

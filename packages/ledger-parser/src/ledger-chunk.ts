@@ -9,12 +9,12 @@ import type {
   GcmHeader, 
   PublicDomain, 
   LedgerKeyValue,
-} from './types.js';
+} from './types';
 import { 
   EntryType,
   LEDGER_CONSTANTS,
   entryTypeHelpers
-} from './types.js';
+} from './types';
 
 /**
  * Parser for CCF LedgerChunkV2 format files.
