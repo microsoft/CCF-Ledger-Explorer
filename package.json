@@ -17,7 +17,8 @@
     "build:parser": "npm run build -w @ccf/ledger-parser",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:parser": "npm run test -w @ccf/ledger-parser"
   },
   "dependencies": {
     "@ccf/ledger-parser": "*",
