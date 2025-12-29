@@ -13,6 +13,14 @@ import {
   Text,
 } from '@fluentui/react-components';
 
+import {
+  computeCcfInternalTreeRoot,
+  decodeCcfInternalTree,
+  formatCcfInternalTreeSummary,
+} from '../utils/ccf-internal-tree';
+
+import { MerkleTreeGraph } from './MerkleTreeGraph';
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -54,7 +62,7 @@ const useStyles = makeStyles({
   },
 });
 
-export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'auto';
+export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'auto';
 
 interface ValueViewerProps {
   keyName: string;
@@ -94,9 +102,14 @@ const TABLE_CONTENT_TYPE_MAP: Record<string, ContentType> = {
   'public:ccf.gov.service_info': 'json',
   'public:ccf.internal.nodes': 'json',
   'public:ccf.internal.consensus': 'json',
+
+  // CCF internal merkle tree
+  'public:ccf.internal.tree': 'merkletree',
   
   // Add more mappings as needed
 };
+
+const CCF_INTERNAL_TREE_TABLE = 'public:ccf.internal.tree';
 
 export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableName }) => {
   const styles = useStyles();
@@ -256,6 +269,12 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
         const autoType = detectContentType(data, tableName);
         return formatContent(data, autoType);
       }
+
+      case 'merkletree': {
+        // Graphical renderer handles this outside Monaco.
+        // Provide a small placeholder if forced through formatter.
+        return { content: 'Merkle tree viewer', language: 'plaintext' };
+      }
       
       default: {
         return { content: formatHex(data), language: 'plaintext' };
@@ -346,11 +365,43 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
     return lines.join('\n');
   };
 
+  const effectiveContentType: ContentType =
+    contentType === 'auto' ? detectContentType(value, tableName) : contentType;
+
   useEffect(() => {
-    const { content, language } = formatContent(value, contentType);
-    setDisplayContent(content);
-    setEditorLanguage(language);
-  }, [value, contentType, tableName, formatContent]);
+    let cancelled = false;
+
+    const run = async () => {
+      if (effectiveContentType === 'merkletree' && tableName === CCF_INTERNAL_TREE_TABLE) {
+        try {
+          const decoded = decodeCcfInternalTree(value);
+          const root = await computeCcfInternalTreeRoot(decoded);
+          const summary = formatCcfInternalTreeSummary(decoded, root);
+          if (!cancelled) {
+            setDisplayContent(summary);
+            setEditorLanguage('plaintext');
+          }
+        } catch (e) {
+          if (!cancelled) {
+            setDisplayContent(String(e));
+            setEditorLanguage('plaintext');
+          }
+        }
+        return;
+      }
+
+      const { content, language } = formatContent(value, contentType);
+      if (!cancelled) {
+        setDisplayContent(content);
+        setEditorLanguage(language);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [value, contentType, tableName, formatContent, effectiveContentType]);
 
   const handleContentTypeChange = (_event: unknown, data: { optionValue?: string }) => {
     if (data.optionValue) {
@@ -379,6 +430,7 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
             size="small"
           >
             <Option value="auto">Auto Detect</Option>
+            <Option value="merkletree">Merkle Tree</Option>
             <Option value="javascript">JavaScript</Option>
             <Option value="json">JSON</Option>
             <Option value="x509">X.509 Certificate</Option>
@@ -388,21 +440,25 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
       </div>
       
       <div className={styles.editorContainer}>
-        <Editor
-          height="100%"
-          language={editorLanguage}
-          value={displayContent}
-          options={{
-            readOnly: true,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            wordWrap: 'on',
-            automaticLayout: true,
-            fontSize: 12,
-            fontFamily: 'Consolas, "Courier New", monospace',
-          }}
-          theme={isDarkTheme ? "vs-dark" : "vs"}
-        />
+        {effectiveContentType === 'merkletree' && tableName === CCF_INTERNAL_TREE_TABLE ? (
+          <MerkleTreeGraph value={value} />
+        ) : (
+          <Editor
+            height="100%"
+            language={editorLanguage}
+            value={displayContent}
+            options={{
+              readOnly: true,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              automaticLayout: true,
+              fontSize: 12,
+              fontFamily: 'Consolas, "Courier New", monospace',
+            }}
+            theme={isDarkTheme ? "vs-dark" : "vs"}
+          />
+        )}
       </div>
     </div>
   );

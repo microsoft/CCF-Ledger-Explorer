@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   makeStyles,
   Text,
@@ -170,6 +170,18 @@ export const TransactionViewer: React.FC<TransactionViewerProps> = ({
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabValue>('writes');
   const [dialogSelectedTab, setDialogSelectedTab] = useState<TabValue>('writes');
+
+  // Keep internal selection in sync with the route-driven prop.
+  // Without this, navigating between /transaction/:id routes (including browser back/forward)
+  // can show stale details because the component instance is reused.
+  useEffect(() => {
+    if (transactionId) {
+      setSelectedTransaction(transactionId);
+      setIsDetailsDialogOpen(false);
+      setSelectedTab('writes');
+      setDialogSelectedTab('writes');
+    }
+  }, [transactionId]);
   
   const handleTransactionClick = (transactionId: number) => {
     setSelectedTransaction(transactionId);
