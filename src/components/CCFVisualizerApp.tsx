@@ -24,11 +24,12 @@ import {
   ChevronLeft24Regular,
   ChevronRight24Regular,
   DocumentAdd24Regular,
+  DocumentRegular,
 } from '@fluentui/react-icons';
-import { 
-  useStats, 
-  useFileDrop, 
-  useLedgerFiles, 
+import {
+  useStats,
+  useFileDrop,
+  useLedgerFiles,
   useFileTransactions,
   useFileTransactionsCount,
   useStorageQuota
@@ -38,6 +39,7 @@ import { LedgerVisualization } from './LedgerVisualization';
 import { TransactionDataGrid } from './TransactionDataGrid';
 import type { TransactionType } from '../utils/transaction-classification';
 import { filterTransactionsByTypes } from '../utils/transaction-classification';
+import { Sidebar } from './Sidebar';
 
 
 const useStyles = makeStyles({
@@ -85,16 +87,6 @@ const useStyles = makeStyles({
   resizing: {
     cursor: 'col-resize',
   },
-  sidebarHeader: {
-    padding: '16px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  sidebarContent: {
-    flex: 1,
-    overflow: 'auto',
-    padding: '8px',
-  },
   canvas: {
     flex: 1,
     display: 'flex',
@@ -128,7 +120,7 @@ const useStyles = makeStyles({
   },
   statusBar: {
     padding: '8px 24px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,    
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
@@ -221,34 +213,34 @@ export const CCFVisualizerApp: React.FC = () => {
   const [isResizing, setIsResizing] = useState(false);
   const [selectedTypeFilters, setSelectedTypeFilters] = useState<Set<TransactionType>>(new Set());
   const pageSize = 50;
-  
+
   const { data: stats } = useStats();
   const { data: ledgerFiles } = useLedgerFiles();
   const { isUploading, uploadError } = useFileDrop();
   const [showUploadDialog, setShowUploadDialog] = React.useState(false);
   const { data: storageInfo } = useStorageQuota();
-  
+
   // Auto-select the first file when files are loaded
   React.useEffect(() => {
     if (ledgerFiles && ledgerFiles.length > 0 && selectedFileId === null) {
       setSelectedFileId(ledgerFiles[0].id);
     }
   }, [ledgerFiles, selectedFileId]);
-  
+
   // Get file-specific transactions with server-side search
   const { data: fileTransactions, isLoading: fileTransactionsLoading } = useFileTransactions(
-    selectedFileId || 0, 
-    pageSize, 
+    selectedFileId || 0,
+    pageSize,
     transactionPage * pageSize,
     searchQuery || undefined
   );
-  
+
   // Get transaction count for the selected file with search
   const { data: fileTransactionsCount } = useFileTransactionsCount(
-    selectedFileId || 0, 
+    selectedFileId || 0,
     searchQuery || undefined
   );
-  
+
   // Apply only type filtering to transactions (search is now server-side)
   const transactions = fileTransactions ? filterTransactionsByTypes(fileTransactions, selectedTypeFilters) : fileTransactions;
   const transactionsLoading = fileTransactionsLoading;
@@ -298,7 +290,7 @@ export const CCFVisualizerApp: React.FC = () => {
 
   const handleMouseMove = React.useCallback((e: MouseEvent) => {
     if (!isResizing) return;
-    
+
     const newWidth = e.clientX;
     if (newWidth >= 150 && newWidth <= 500) {
       setSidebarWidth(newWidth);
@@ -372,14 +364,56 @@ export const CCFVisualizerApp: React.FC = () => {
             Add Files
           </Button>
 
-          <AddFilesWizard 
-            open={showUploadDialog} 
+          <AddFilesWizard
+            open={showUploadDialog}
             onOpenChange={setShowUploadDialog}
           />
         </div>
       </div>
     );
   }
+
+  const renderSideBar = () =>
+    <Sidebar icon={<DocumentRegular />} title="Ledger Files">
+      {ledgerFiles && ledgerFiles.length > 0 ? (
+        <Tree aria-label="Ledger Files">
+          {ledgerFiles.map((file) => (
+            <TreeItem
+              key={file.id}
+              itemType="leaf"
+              className={styles.treeItem}
+              style={{
+                backgroundColor: selectedFileId === file.id ? tokens.colorNeutralBackground3 : 'transparent'
+              }}
+            >
+              <TreeItemLayout
+                iconBefore={<Document24Regular />}
+                onClick={() => handleFileSelect(file.id)}
+              >
+                <div className={styles.fileTreeItem}>
+                  <div className={styles.fileNameContainer}>
+                    {file.filename}
+                  </div>
+                  <Badge appearance="outline" size="small" className={styles.badge}>
+                    {formatBytes(file.fileSize)}
+                  </Badge>
+                </div>
+              </TreeItemLayout>
+            </TreeItem>
+          ))}
+        </Tree>
+      ) : (
+        <div className={styles.emptyState}>
+          <Body1>No files uploaded</Body1>
+        </div>
+      )}
+      
+      <div
+        className={isResizing ? `${styles.resizeHandle} ${styles.resizeHandleActive}` : styles.resizeHandle}
+        onMouseDown={handleMouseDown}
+      />
+    </Sidebar>
+
 
   // Main explorer view with sidebar and data table
   return (
@@ -402,55 +436,13 @@ export const CCFVisualizerApp: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div 
+      <div
         className={styles.mainContent}
         // @ts-expect-error CSS custom properties for dynamic sidebar width
         style={{ '--sidebar-width': `${sidebarWidth}px` }}
       >
         {/* Sidebar - File Tree */}
-        <div className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <Body1 className={styles.sidebarTitle}>Ledger Files</Body1>
-          </div>
-          <div className={styles.sidebarContent}>
-            {ledgerFiles && ledgerFiles.length > 0 ? (
-              <Tree aria-label="Ledger Files">
-                {ledgerFiles.map((file) => (
-                  <TreeItem 
-                    key={file.id} 
-                    itemType="leaf"
-                    className={styles.treeItem}
-                    style={{ 
-                      backgroundColor: selectedFileId === file.id ? tokens.colorNeutralBackground3 : 'transparent'
-                    }}
-                  >
-                    <TreeItemLayout
-                      iconBefore={<Document24Regular />}
-                      onClick={() => handleFileSelect(file.id)}
-                    >
-                      <div className={styles.fileTreeItem}>
-                          <div className={styles.fileNameContainer}>
-                            {file.filename}
-                          </div>
-                        <Badge appearance="outline" size="small" className={styles.badge}>
-                          {formatBytes(file.fileSize)}
-                        </Badge>
-                      </div>
-                    </TreeItemLayout>
-                  </TreeItem>
-                ))}
-              </Tree>
-            ) : (
-              <div className={styles.emptyState}>
-                <Body1>No files uploaded</Body1>
-              </div>
-            )}
-          </div>
-          <div
-            className={isResizing ? `${styles.resizeHandle} ${styles.resizeHandleActive}` : styles.resizeHandle}
-            onMouseDown={handleMouseDown}
-          />
-        </div>
+        {renderSideBar()}
 
         {/* Main Canvas - Transaction Table */}
         <div className={styles.canvas}>
@@ -542,7 +534,7 @@ export const CCFVisualizerApp: React.FC = () => {
       {/* Status Bar */}
       <footer className={styles.statusBar}>
         <Caption1>
-          Showing {transactions?.length || 0} 
+          Showing {transactions?.length || 0}
           {totalTransactions && totalTransactions > pageSize && ` of ${totalTransactions}`} transactions
           {selectedFileId && ledgerFiles && (
             <> • Selected: {ledgerFiles.find(f => f.id === selectedFileId)?.filename}</>
