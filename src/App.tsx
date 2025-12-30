@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FluentProvider, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
@@ -20,6 +20,8 @@ import { CoseViewerPage } from './pages/CoseViewerPage';
 import { MenuBar } from './components/MenuBar';
 import GridLayout from './components/AppLayout';
 import { ConfigPage } from './pages/ConfigPage';
+import { SplashScreen } from './components/SplashScreen';
+import { initializeDatabase, resetDatabase } from './hooks/use-ccf-data';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -32,6 +34,9 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Database initialization state
+  const [isDbInitialized, setIsDbInitialized] = useState(false);
+  
   // Initialize dark mode from localStorage or default to false
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('ccf-visualizer-theme');
@@ -52,6 +57,23 @@ function App() {
   const handleToggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
+
+  const handleDatabaseInitialized = useCallback(() => {
+    setIsDbInitialized(true);
+  }, []);
+
+  // Show splash screen until database is initialized
+  if (!isDbInitialized) {
+    return (
+      <FluentProvider theme={currentTheme}>
+        <SplashScreen
+          onInitialized={handleDatabaseInitialized}
+          initializeDatabase={initializeDatabase}
+          resetDatabase={resetDatabase}
+        />
+      </FluentProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
