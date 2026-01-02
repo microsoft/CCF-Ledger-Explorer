@@ -55,6 +55,20 @@ export const designTokens = {
 } as const;
 
 // ============================================================================
+// PAGE TRANSITION CONFIGURATION
+// ============================================================================
+export const pageTransition = {
+  /** Duration of page transitions */
+  duration: 200,
+  /** CSS duration string */
+  durationMs: '200ms',
+  /** Easing curve - Fluent decelerate curve for entering content */
+  easing: 'cubic-bezier(0, 0, 0, 1)',
+  /** Combined transition timing */
+  timing: '200ms cubic-bezier(0, 0, 0, 1)',
+} as const;
+
+// ============================================================================
 // SHARED STYLE UTILITIES
 // ============================================================================
 
@@ -80,6 +94,19 @@ export const animations = {
       }
     }
   `,
+  /** Subtle page entrance - fade + micro slide */
+  pageEnter: `
+    @keyframes pageEnter {
+      from { 
+        opacity: 0; 
+        transform: translateY(6px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
+    }
+  `,
   pulse: `
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -98,6 +125,48 @@ export const animations = {
  * Shared styles for common patterns - use with mergeClasses
  */
 export const useSharedStyles = makeStyles({
+  // -------------------------------------------------------------------------
+  // PAGE TRANSITIONS
+  // -------------------------------------------------------------------------
+  
+  /** Apply to page wrapper for entrance animation */
+  pageTransition: {
+    animationName: {
+      from: { 
+        opacity: 0, 
+        transform: 'translateY(6px)',
+      },
+      to: { 
+        opacity: 1, 
+        transform: 'translateY(0)',
+      },
+    },
+    animationDuration: pageTransition.durationMs,
+    animationTimingFunction: pageTransition.easing,
+    animationFillMode: 'both',
+  },
+  
+  /** Wrapper that fills parent and applies transition */
+  pageTransitionWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    width: '100%',
+    animationName: {
+      from: { 
+        opacity: 0, 
+        transform: 'translateY(6px)',
+      },
+      to: { 
+        opacity: 1, 
+        transform: 'translateY(0)',
+      },
+    },
+    animationDuration: pageTransition.durationMs,
+    animationTimingFunction: pageTransition.easing,
+    animationFillMode: 'both',
+  },
+
   // -------------------------------------------------------------------------
   // LAYOUT PRIMITIVES
   // -------------------------------------------------------------------------
