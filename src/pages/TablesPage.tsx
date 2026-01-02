@@ -1109,6 +1109,7 @@ const TablesPage: React.FC = () => {
                     title="Tables"
                     icon={<DatabaseRegular />}
                     collapsible={false}
+                    resizable={true}
                     headerActions={
                         <div className={classes.actionButtons}>
                             <Tooltip content="View database schema" relationship="label">
