@@ -327,13 +327,13 @@ class VerificationWorker {
   }>> {
     if (!database) throw new Error('Database not initialized');
 
-    return await database.getTransactionsWithRelated(start, limit);
+    return await database.transactions.getWithRelated(start, limit);
   }
 
   private async getTotalTransactionsCount(): Promise<number> {
     if (!database) throw new Error('Database not initialized');
 
-    return await database.getTotalTransactionsCount();
+    return await database.transactions.getTotalCount();
   }
 }
 

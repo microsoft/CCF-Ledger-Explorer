@@ -42,7 +42,7 @@ import { Sidebar } from '../components/Sidebar';
 import { SchemaViewerDialog } from '../components/SchemaViewerDialog';
 import { getDatabaseSchema, type DatabaseSchema } from '../database/queries/schema-queries';
 import type { DialogOpenChangeData } from '@fluentui/react-components';
-import type { CCFDatabase } from '../database';
+import type { TableKeyValue } from '../database';
 
 const SORTABLE_COLUMNS: TableLatestStateSortColumn[] = ['sequence', 'transactionId', 'keyName', 'value'];
 const DEFAULT_SORT_COLUMN: TableLatestStateSortColumn = 'sequence';
@@ -109,7 +109,7 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
 };
 
 type ColumnId = 'sequence' | 'transactionId' | 'keyName' | 'value' | 'issuer' | 'subject' | 'signedAt' | 'actions';
-type TableLatestStateRow = Awaited<ReturnType<CCFDatabase['getTableLatestState']>>[number];
+type TableLatestStateRow = TableKeyValue;
 
 const isValidSortColumn = (value: string | null): value is TableLatestStateSortColumn => {
     return !!value && SORTABLE_COLUMNS.includes(value as TableLatestStateSortColumn);

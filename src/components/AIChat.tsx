@@ -478,9 +478,9 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   useEffect(() => {
     if (database) {
-      database.getAllTransactionsCount().then(count => {
+      database.transactions.getAllCount().then((count: number) => {
         setAllTransactionsCount(count);
-      }).catch(error => {
+      }).catch((error: Error) => {
         console.error('Failed to get transaction count:', error);
         setAllTransactionsCount(0);
       });
