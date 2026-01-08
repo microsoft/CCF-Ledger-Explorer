@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import React from 'react';
+import * as React from 'react';
 import {
   makeStyles,
   DataGrid,
@@ -15,6 +15,7 @@ import {
   Badge,
   createTableColumn,
   tokens,
+  Text,
 } from '@fluentui/react-components';
 import type { TableColumnDefinition } from '@fluentui/react-components';
 
@@ -70,6 +71,10 @@ const useStyles = makeStyles({
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground1Hover,
     },
+  },
+  emptyOverlay: {
+    padding: tokens.spacingVerticalXL + ' ' + tokens.spacingHorizontalL,
+    color: tokens.colorNeutralForeground3,
   },
 });
 
@@ -168,41 +173,53 @@ export const TransactionDataGrid: React.FC<TransactionDataGridProps> = ({
   ];
 
   return (
-    <DataGrid
-      items={transactions}
-      columns={columns}
-      sortable
-      selectionMode="single"
-      onSelectionChange={(_, data) => {
-        if (data.selectedItems.size > 0) {
-          const selectedItems = Array.from(data.selectedItems);
-          const rowIndex = parseInt(selectedItems[0] as string);
-          const selectedTransaction = transactions[rowIndex];
-          if (selectedTransaction) {
-            onTransactionClick(selectedTransaction.id);
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <DataGrid
+        items={transactions}
+        columns={columns}
+        sortable
+        selectionMode="single"
+        onSelectionChange={(_, data) => {
+          if (transactions.length === 0) {
+            return;
           }
-        }
-      }}
-      className={styles.dataGrid}
-    >
-      <DataGridHeader>
-        <DataGridRow>
-          {({ renderHeaderCell }) => (
-            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-          )}
-        </DataGridRow>
-      </DataGridHeader>
-      <DataGridBody<TransactionRow>>
-        {({ item, rowId }) => (
-          <DataGridRow<TransactionRow> key={rowId} className={styles.row}>
-            {({ renderCell }) => (
-              <DataGridCell>
-                {renderCell(item)}
-              </DataGridCell>
+
+          if (data.selectedItems.size > 0) {
+            const selectedItems = Array.from(data.selectedItems);
+            const rowIndex = parseInt(selectedItems[0] as string);
+            const selectedTransaction = transactions[rowIndex];
+            if (selectedTransaction) {
+              onTransactionClick(selectedTransaction.id);
+            }
+          }
+        }}
+        className={styles.dataGrid}
+      >
+        <DataGridHeader>
+          <DataGridRow>
+            {({ renderHeaderCell }) => (
+              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
             )}
           </DataGridRow>
-        )}
-      </DataGridBody>
-    </DataGrid>
+        </DataGridHeader>
+        <DataGridBody<TransactionRow>>
+          {({ item, rowId }) => (
+            <DataGridRow<TransactionRow> key={rowId} className={styles.row}>
+              {({ renderCell }) => (
+                <DataGridCell>
+                  {renderCell(item)}
+                </DataGridCell>
+              )}
+            </DataGridRow>
+          )}
+        </DataGridBody>
+      </DataGrid>
+
+      {transactions.length === 0 && (
+        <div className={styles.emptyOverlay}>
+          <Text>No transactions match the selected filters.</Text>
+        </div>
+      )}
+    </div>
   );
 };

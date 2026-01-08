@@ -275,7 +275,10 @@ export const LedgerVisualization: React.FC<LedgerVisualizationProps> = ({
     );
   }
 
-  const sortedViews = Array.from(transactionsByView.keys()).sort((a, b) => a - b);
+  const sortedViews = (() => {
+    const views = Array.from(transactionsByView.keys()).sort((a, b) => a - b);
+    return views.length === 0 ? [0] : views;
+  })();
 
   return (
     <div className={styles.container}>

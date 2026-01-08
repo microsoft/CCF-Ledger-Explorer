@@ -3,7 +3,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -333,18 +334,12 @@ export const CCFVisualizerApp: React.FC = () => {
         </div>
       );
     }
-    if (transactions && transactions.length > 0) {
-      return (
-        <TransactionDataGrid
-          transactions={transactions}
-          onTransactionClick={handleTransactionClick}
-        />
-      );
-    }
+
     return (
-      <div className={styles.emptyState}>
-        <Body1>{searchQuery ? 'No transactions match your search' : 'No transactions found'}</Body1>
-      </div>
+      <TransactionDataGrid
+        transactions={transactions ?? []}
+        onTransactionClick={handleTransactionClick}
+      />
     );
   };
 
@@ -391,10 +386,10 @@ export const CCFVisualizerApp: React.FC = () => {
           </div>
 
           {/* Visualization */}
-          {transactions && transactions.length > 0 && (
+          {fileTransactions && fileTransactions.length > 0 && (
             <div className={styles.visualizationContainer}>
               <LedgerVisualization
-                transactions={transactions}
+                transactions={fileTransactions}
                 isLoading={transactionsLoading}
                 maxTransactions={500}
                 selectedTypeFilters={selectedTypeFilters}
