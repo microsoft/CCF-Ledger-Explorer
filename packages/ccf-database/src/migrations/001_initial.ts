@@ -64,14 +64,11 @@ export const migration: Migration = {
     )`,
 
     // Indexes for better query performance
+    // Note: Composite indexes on (map_name, key_name) also serve single-column map_name queries
     `CREATE INDEX IF NOT EXISTS idx_transactions_file_id ON transactions(file_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_transactions_tx_id ON transactions(transaction_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_transactions_entry_type ON transactions(entry_type)`,
     `CREATE INDEX IF NOT EXISTS idx_kv_writes_sequence_no ON kv_writes(sequence_no)`,
     `CREATE INDEX IF NOT EXISTS idx_kv_writes_map_key ON kv_writes(map_name, key_name)`,
-    `CREATE INDEX IF NOT EXISTS idx_kv_writes_map_name ON kv_writes(map_name)`,
     `CREATE INDEX IF NOT EXISTS idx_kv_deletes_sequence_no ON kv_deletes(sequence_no)`,
     `CREATE INDEX IF NOT EXISTS idx_kv_deletes_map_key ON kv_deletes(map_name, key_name)`,
-    `CREATE INDEX IF NOT EXISTS idx_kv_deletes_map_name ON kv_deletes(map_name)`,
   ],
 };
