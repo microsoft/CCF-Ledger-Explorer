@@ -11,9 +11,9 @@ import type { Migration } from '../types/migration-types';
  * All migrations in order. Add new migrations to this array.
  */
 const migrations: Migration[] = [
-  migration001,
+  { ...migration001, version: 1 },
   // Add future migrations here:
-  // migration002,
+  // { ...migration002, version: 2 },
 ];
 
 /**
@@ -36,7 +36,7 @@ export const PERFORMANCE_PRAGMAS = [
  */
 export const DROP_TABLES_ORDER = [
   'kv_deletes',
-  'kv_writes', 
+  'kv_writes',
   'transactions',
   'ledger_files',
   'schema_meta',
@@ -93,7 +93,7 @@ export function runMigrations(db: SQLiteDB, logger?: { log: (msg: string) => voi
 
   // Find and run pending migrations
   const pendingMigrations = migrations.filter(m => m.version > currentVersion);
-  
+
   if (pendingMigrations.length === 0) {
     logger?.log('No pending migrations');
     return;
