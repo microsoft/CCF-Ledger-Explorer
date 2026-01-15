@@ -233,13 +233,8 @@ export const FileUploadArea: React.FC = () => {
     processSelectedFiles(files);
   };
 
-  // Called from ChunkSelector's onImport - uses overwrite preference from ChunkSelector
-  const handleImportRequest = useCallback((selectedFiles: ChunkFileInfo[], overwriteExisting: boolean) => {
-    const mode: ImportMode = overwriteExisting ? 'replace' : 'append';
-    doImport(selectedFiles, pendingFiles, mode);
-  }, [pendingFiles]);
-
-  const doImport = async (selectedFiles: ChunkFileInfo[], allPendingFiles: File[], mode: ImportMode) => {
+  // Perform the import of selected files
+  const doImport = useCallback(async (selectedFiles: ChunkFileInfo[], allPendingFiles: File[], mode: ImportMode) => {
     if (selectedFiles.length === 0) return;
 
     setIsImporting(true);
@@ -268,7 +263,13 @@ export const FileUploadArea: React.FC = () => {
     } finally {
       setIsImporting(false);
     }
-  };
+  }, [clearAllDataMutation, handleFiles]);
+
+  // Called from ChunkSelector's onImport - uses overwrite preference from ChunkSelector
+  const handleImportRequest = useCallback((selectedFiles: ChunkFileInfo[], overwriteExisting: boolean) => {
+    const mode: ImportMode = overwriteExisting ? 'replace' : 'append';
+    doImport(selectedFiles, pendingFiles, mode);
+  }, [doImport, pendingFiles]);
 
   const handleClearSelection = () => {
     setPendingFiles([]);
