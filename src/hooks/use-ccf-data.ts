@@ -6,7 +6,7 @@
 
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CCFDatabase } from '../database';
+import { CCFDatabase } from '@ccf/database';
 import { getStorageQuota, checkStorageCapacity, estimateDatabaseSize } from '../utils/storage-quota';
 import { verificationService } from '../services/verification-service';
 
@@ -129,7 +129,7 @@ export const useLedgerFiles = () => {
     queryKey: queryKeys.ledgerFiles,
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getLedgerFiles();
+      return db.files.getAll();
     },
   });
 };
@@ -142,7 +142,7 @@ export const useTransactions = (fileId: number, limit = 100, offset = 0) => {
     queryKey: [...queryKeys.transactions(fileId), limit, offset],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTransactions(fileId, limit, offset);
+      return db.transactions.getByFileId(fileId, limit, offset);
     },
     enabled: fileId > 0,
   });
@@ -157,8 +157,8 @@ export const useTransactionDetails = (transactionId: number) => {
     queryFn: async () => {
       const db = await getDatabase();
       const [writes, deletes] = await Promise.all([
-        db.getTransactionWrites(transactionId),
-        db.getTransactionDeletes(transactionId),
+        db.transactions.getWrites(transactionId),
+        db.transactions.getDeletes(transactionId),
       ]);
       return { writes, deletes };
     },
@@ -174,7 +174,7 @@ export const useSearchTransactions = (query: string, limit = 50) => {
     queryKey: [...queryKeys.search(query), limit],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.searchByKey(query, limit);
+      return db.transactions.searchByKey(query, limit);
     },
     enabled: query.length > 0,
   });
@@ -188,7 +188,7 @@ export const useSearchByKeyOrValue = (query: string, limit = 50) => {
     queryKey: queryKeys.searchByKeyOrValue(query, limit),
     queryFn: async () => {
       const db = await getDatabase();
-      return db.searchByKeyOrValue(query, limit);
+      return db.transactions.searchByKeyOrValue(query, limit);
     },
     enabled: query.length > 0,
   });
@@ -202,7 +202,7 @@ export const useAllTransactions = (limit = 1000, offset = 0, searchQuery?: strin
     queryKey: ['allTransactions', limit, offset, searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getAllTransactions(limit, offset, searchQuery);
+      return db.transactions.getAll(limit, offset, searchQuery);
     },
   });
 };
@@ -215,7 +215,7 @@ export const useTransactionsWithRelated = (start: number, limit: number) => {
     queryKey: ['transactionsWithRelated', start, limit],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTransactionsWithRelated(start, limit);
+      return db.transactions.getWithRelated(start, limit);
     },
     enabled: start >= 0,
   });
@@ -229,7 +229,7 @@ export const useAllTransactionsCount = (searchQuery?: string) => {
     queryKey: ['allTransactionsCount', searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getAllTransactionsCount(searchQuery);
+      return db.transactions.getAllCount(searchQuery);
     },
   });
 };
@@ -242,7 +242,7 @@ export const useTotalTransactionsCount = () => {
     queryKey: ['totalTransactionsCount'],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTotalTransactionsCount();
+      return db.transactions.getTotalCount();
     },
   });
 };
@@ -255,7 +255,7 @@ export const useStats = () => {
     queryKey: queryKeys.stats,
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getStats();
+      return db.stats.getStats();
     },
   });
 };
@@ -268,7 +268,7 @@ export const useEnhancedStats = () => {
     queryKey: queryKeys.enhancedStats,
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getEnhancedStats();
+      return db.stats.getEnhancedStats();
     },
   });
 };
@@ -326,7 +326,7 @@ export const useDeleteLedgerFile = () => {
   return useMutation({
     mutationFn: async (fileId: number) => {
       const db = await getDatabase();
-      await db.deleteLedgerFile(fileId);
+      await db.files.delete(fileId);
     },
     onSuccess: () => {
       // Invalidate all queries to refresh the UI
@@ -449,7 +449,7 @@ export const useFileTransactions = (fileId: number, limit = 100, offset = 0, sea
     queryKey: ['fileTransactions', fileId, limit, offset, searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getFileTransactions(fileId, limit, offset, searchQuery);
+      return db.transactions.getByFileIdWithDetails(fileId, limit, offset, searchQuery);
     },
     enabled: fileId > 0,
   });
@@ -463,7 +463,7 @@ export const useTransactionById = (transactionId: number) => {
     queryKey: ['transactionById', transactionId],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTransactionById(transactionId);
+      return db.transactions.getById(transactionId);
     },
     enabled: transactionId > 0,
   });
@@ -477,7 +477,7 @@ export const useFileTransactionsCount = (fileId: number, searchQuery?: string) =
     queryKey: ['fileTransactionsCount', fileId, searchQuery],
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getFileTransactionsCount(fileId, searchQuery);
+      return db.transactions.getCountByFileId(fileId, searchQuery);
     },
     enabled: fileId > 0,
   });
@@ -491,7 +491,7 @@ export const useCCFTables = () => {
     queryKey: queryKeys.ccfTables,
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getCCFTables();
+      return db.kv.getTables();
     },
   });
 };
@@ -504,7 +504,7 @@ export const useTableKeyValues = (mapName: string, limit = 100, offset = 0, sear
     queryKey: queryKeys.tableKeyValues(mapName, limit, offset, searchQuery),
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTableKeyValues(mapName, limit, offset, searchQuery);
+      return db.kv.getTableKeyValues(mapName, limit, offset, searchQuery);
     },
     enabled: mapName.length > 0,
   });
@@ -525,7 +525,7 @@ export const useTableLatestState = (
     queryKey: queryKeys.tableLatestState(mapName, limit, offset, searchQuery, sortColumn, sortDirection),
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTableLatestState(mapName, limit, offset, searchQuery, sortColumn, sortDirection);
+      return db.kv.getTableLatestState(mapName, limit, offset, searchQuery, sortColumn, sortDirection);
     },
     enabled: mapName.length > 0,
   });
@@ -539,7 +539,7 @@ export const useTableLatestStateCount = (mapName: string, searchQuery?: string) 
     queryKey: queryKeys.tableLatestStateCount(mapName, searchQuery),
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getTableLatestStateCount(mapName, searchQuery);
+      return db.kv.getTableLatestStateCount(mapName, searchQuery);
     },
     enabled: mapName.length > 0,
   });
@@ -553,7 +553,7 @@ export const useKeyTransactions = (mapName: string, keyName: string, limit = 100
     queryKey: queryKeys.keyTransactions(mapName, keyName, limit, offset),
     queryFn: async () => {
       const db = await getDatabase();
-      return db.getKeyTransactions(mapName, keyName, limit, offset);
+      return db.kv.getKeyTransactions(mapName, keyName, limit, offset);
     },
     enabled: mapName.length > 0 && keyName.length > 0,
   });
