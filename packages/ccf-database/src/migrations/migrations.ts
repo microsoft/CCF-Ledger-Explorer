@@ -5,7 +5,6 @@
 
 import type { Database as SQLiteDB } from '@sqlite.org/sqlite-wasm';
 import { migration as migration001 } from './001_initial';
-import { migration as migration002 } from './002_verification';
 import type { Migration } from '../types/migration-types';
 
 /**
@@ -13,9 +12,8 @@ import type { Migration } from '../types/migration-types';
  */
 const migrations: Migration[] = [
   { ...migration001, version: 1 },
-  { ...migration002, version: 2 },
   // Add future migrations here:
-  // { ...migration003, version: 3 },
+  // { ...migration002, version: 2 },
 ];
 
 /**
