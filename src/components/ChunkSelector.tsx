@@ -160,6 +160,8 @@ export interface ChunkFileInfo extends LedgerFileInfo {
   size?: number;
   /** Last modified date (optional) */
   lastModified?: Date;
+  /** Whether this file is already loaded in the database */
+  isExisting?: boolean;
 }
 
 /**
@@ -332,10 +334,13 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     const selectedVersions = new Map<string, string>();
     const checkedRanges = new Set<string>();
 
-    // Default: select first version of each group, check all
+    // Default: select first version of each group, check only non-existing ranges
     for (const group of chunkGroups) {
       selectedVersions.set(group.rangeKey, group.files[0].id);
-      checkedRanges.add(group.rangeKey);
+      // Don't pre-check ranges that are already loaded
+      if (!existingRanges.has(group.rangeKey)) {
+        checkedRanges.add(group.rangeKey);
+      }
     }
 
     return { selectedVersions, checkedRanges };
@@ -355,22 +360,24 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
         newSelectedVersions.set(group.rangeKey, group.files[0].id);
       }
 
-      // Keep existing checked state if still valid
-      if (selection.checkedRanges.has(group.rangeKey)) {
+      // Keep existing checked state if still valid, but never check already-loaded ranges
+      if (selection.checkedRanges.has(group.rangeKey) && !existingRanges.has(group.rangeKey)) {
         newCheckedRanges.add(group.rangeKey);
       }
     }
 
-    // If this is initial load (nothing was checked), check all
+    // If this is initial load (nothing was checked), check all non-existing ranges
     if (selection.checkedRanges.size === 0) {
       for (const group of chunkGroups) {
-        newCheckedRanges.add(group.rangeKey);
+        if (!existingRanges.has(group.rangeKey)) {
+          newCheckedRanges.add(group.rangeKey);
+        }
       }
     }
 
     setSelection({ selectedVersions: newSelectedVersions, checkedRanges: newCheckedRanges });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chunkGroups]);
+  }, [chunkGroups, existingRanges]);
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -492,20 +499,24 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     };
   }, [chunkGroups, selection]);
 
-  // Get selected files for import
+  // Get selected files for import (excludes already-loaded files)
   const getSelectedFiles = useCallback((): ChunkFileInfo[] => {
     const result: ChunkFileInfo[] = [];
 
     for (const group of chunkGroups) {
       if (!selection.checkedRanges.has(group.rangeKey)) continue;
+      // Skip already-loaded ranges
+      if (existingRanges.has(group.rangeKey)) continue;
 
       const selectedId = selection.selectedVersions.get(group.rangeKey);
       const file = group.files.find(f => f.id === selectedId) || group.files[0];
+      // Also skip if the file itself is marked as existing
+      if (file.isExisting) continue;
       result.push(file);
     }
 
     return result.sort((a, b) => a.startNo - b.startNo);
-  }, [chunkGroups, selection]);
+  }, [chunkGroups, selection, existingRanges]);
 
   // Handle import click
   const handleImport = useCallback(() => {
@@ -560,7 +571,8 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
           className={`${styles.chunkRow} ${isChecked ? styles.chunkRowSelected : ''} ${isAlreadyLoaded ? styles.chunkRowAlreadyLoaded : ''}`}
         >
           <Checkbox
-            checked={isChecked}
+            checked={isChecked || isAlreadyLoaded}
+            disabled={isAlreadyLoaded}
             onChange={() => toggleRange(group.rangeKey)}
           />
           <div className={styles.chunkInfo}>

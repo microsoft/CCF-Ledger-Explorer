@@ -141,6 +141,27 @@ export const FileUploadArea: React.FC = () => {
 
   const hasExistingData = existingLedgerFiles && existingLedgerFiles.length > 0;
 
+  // Convert existing database files to ChunkFileInfo format
+  const existingChunkFiles = useMemo((): ChunkFileInfo[] => {
+    if (!existingLedgerFiles) return [];
+    return existingLedgerFiles
+      .map(file => {
+        const parsed = parseLedgerFilename(file.filename);
+        if (!parsed.isValid) return null;
+        return {
+          id: `existing-${file.id}`,
+          filename: file.filename,
+          startNo: parsed.startNo,
+          endNo: parsed.endNo,
+          isValid: true,
+          size: file.fileSize,
+          lastModified: file.createdAt ? new Date(file.createdAt) : undefined,
+          isExisting: true, // Mark as already in database
+        } as ChunkFileInfo;
+      })
+      .filter((chunk): chunk is ChunkFileInfo => chunk !== null);
+  }, [existingLedgerFiles]);
+
   // Compute set of already-loaded range keys
   const existingRanges = useMemo(() => {
     if (!existingLedgerFiles) return new Set<string>();
@@ -153,6 +174,17 @@ export const FileUploadArea: React.FC = () => {
     }
     return ranges;
   }, [existingLedgerFiles]);
+
+  // Combine existing and new files for display
+  const allChunkFiles = useMemo(() => {
+    // Combine existing files with newly selected files
+    // Filter out any newly selected files that duplicate existing ones
+    const newFilesFiltered = chunkFiles.filter(f => {
+      const rangeKey = `${f.startNo}-${f.endNo}`;
+      return !existingRanges.has(rangeKey);
+    });
+    return [...existingChunkFiles, ...newFilesFiltered];
+  }, [existingChunkFiles, chunkFiles, existingRanges]);
 
   // Handle clear database
   const handleClearDatabase = useCallback(async () => {
@@ -367,11 +399,11 @@ export const FileUploadArea: React.FC = () => {
         </MessageBar>
       )}
 
-      {/* Chunk Selector */}
-      {chunkFiles.length > 0 && (
+      {/* Chunk Selector - show when there are files (existing or newly selected) */}
+      {allChunkFiles.length > 0 && (
         <div className={styles.chunkSelectorWrapper}>
           <ChunkSelector
-            files={chunkFiles}
+            files={allChunkFiles}
             onImport={handleImportRequest}
             isImporting={isImporting}
             importButtonLabel="Import Selected"
@@ -381,19 +413,21 @@ export const FileUploadArea: React.FC = () => {
             onClearDatabase={handleClearDatabase}
           />
           
-          <Button
-            appearance="secondary"
-            onClick={handleClearSelection}
-            disabled={isImporting}
-            style={{ marginTop: '8px' }}
-          >
-            Clear Selection
-          </Button>
+          {chunkFiles.length > 0 && (
+            <Button
+              appearance="secondary"
+              onClick={handleClearSelection}
+              disabled={isImporting}
+              style={{ marginTop: '8px' }}
+            >
+              Clear Selection
+            </Button>
+          )}
         </div>
       )}
 
       {/* Empty State */}
-      {chunkFiles.length === 0 && !isImporting && (
+      {allChunkFiles.length === 0 && !isImporting && (
         <div className={styles.emptyState}>
           <Caption1 className={styles.emptySubtext}>
             Select CCF ledger .committed files to preview and import.

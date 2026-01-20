@@ -25,6 +25,7 @@ import {
   ChevronLeft24Regular,
   ChevronRight24Regular,
   DocumentAdd24Regular,
+  DocumentAdd16Regular,
   DocumentRegular,
   CheckmarkCircle12Regular,
   Clock12Regular,
@@ -341,11 +342,6 @@ export const CCFVisualizerApp: React.FC = () => {
           >
             Add Files
           </Button>
-
-          <AddFilesWizard
-            open={showUploadDialog}
-            onOpenChange={setShowUploadDialog}
-          />
         </div>
       </div>
     );
@@ -398,6 +394,24 @@ export const CCFVisualizerApp: React.FC = () => {
         </Tooltip>
       )
     ) : null;
+
+    const addFilesButton = (
+      <Tooltip content="Add ledger files" relationship="label">
+        <Button
+          size="small"
+          appearance="subtle"
+          icon={<DocumentAdd16Regular />}
+          onClick={() => setShowUploadDialog(true)}
+        />
+      </Tooltip>
+    );
+
+    const headerActions = (
+      <>
+        {verifyButton}
+        {addFilesButton}
+      </>
+    );
     
     return (
       <Sidebar 
@@ -405,7 +419,7 @@ export const CCFVisualizerApp: React.FC = () => {
         title="Ledger Files" 
         resizable 
         collapsible
-        headerActions={verifyButton}
+        headerActions={headerActions}
       >
         {hasFiles ? (
           <Tree aria-label="Ledger Files">
@@ -622,6 +636,12 @@ export const CCFVisualizerApp: React.FC = () => {
           {storageInfo?.quota && ` • Storage: ${formatBytes(storageInfo.quota.usage)} / ${formatBytes(storageInfo.quota.quota)} (${storageInfo.quota.usagePercentage.toFixed(1)}%)`}
         </Caption1>
       </footer>
+
+      {/* Add Files Dialog - always available */}
+      <AddFilesWizard
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+      />
     </div>
   );
 };
