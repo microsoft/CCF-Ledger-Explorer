@@ -115,7 +115,7 @@ const useStyles = makeStyles({
 export const useDownloadMstFiles = () => {
     const { handleFiles } = useFileDrop();
 
-    const downloadFiles = async (targetDomain?: string) => {
+    const downloadFiles = async (targetDomain?: string, options?: { shouldVerify?: boolean }) => {
         const domainToUse = targetDomain;
         if (!domainToUse) {
             throw new Error('Domain is required to download files');
@@ -123,7 +123,7 @@ export const useDownloadMstFiles = () => {
         const fileShareService = new MstFilesService();
         await fileShareService.initialize(domainToUse);
         const { files: downloadedFiles } = await fileShareService.downloadAllLedgerFiles();
-        await handleFiles(downloadedFiles);
+        await handleFiles(downloadedFiles, { shouldVerify: options?.shouldVerify ?? false });
     };
 
     return { 
@@ -222,7 +222,8 @@ export const MstLedgerImportView: React.FC = () => {
         );
 
         if (downloadedFiles.length > 0) {
-            await handleFiles(downloadedFiles);
+            // Pass shouldVerify option to handleFiles - verification now happens during import
+            await handleFiles(downloadedFiles, { shouldVerify: autoVerify });
 
             if (ledgerDomain) {
                 storeLedgerDomain(ledgerDomain, 'MST');
@@ -231,16 +232,8 @@ export const MstLedgerImportView: React.FC = () => {
             setFiles([]);
             setDownloadedFiles(filesDownloaded);
             
-            // Start verification in background if requested
-            if (autoVerify) {
-                // Small delay to ensure database queries are updated
-                setTimeout(() => {
-                    verificationService.clearSavedProgress(); // Start fresh
-                    verificationService.startVerification().catch(err => {
-                        console.error('Auto-verification failed to start:', err);
-                    });
-                }, 500);
-            }
+            // Clear saved verification progress since we now verify during import
+            verificationService.clearSavedProgress();
         } else {
             console.error('No files downloaded');
         }

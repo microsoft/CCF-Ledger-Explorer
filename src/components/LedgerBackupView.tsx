@@ -200,20 +200,13 @@ export const LedgerBackupView: React.FC = () => {
     );
 
     if (downloadedFiles.length > 0) {
-      await handleFiles(downloadedFiles);
+      // Pass shouldVerify option to handleFiles - verification now happens during import
+      await handleFiles(downloadedFiles, { shouldVerify: autoVerify });
       setFiles([]);
       setDownloadedFiles(filesDownloaded);
       
-      // Start verification in background if requested
-      if (autoVerify) {
-        // Small delay to ensure database queries are updated
-        setTimeout(() => {
-          verificationService.clearSavedProgress(); // Start fresh
-          verificationService.startVerification().catch(err => {
-            console.error('Auto-verification failed to start:', err);
-          });
-        }, 500);
-      }
+      // Clear saved verification progress since we now verify during import
+      verificationService.clearSavedProgress();
     } else {
       console.error('No files downloaded');
     }

@@ -17,6 +17,7 @@ import {
   TreeItemLayout,
   Badge,
   Button,
+  Tooltip,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -27,6 +28,10 @@ import {
   DocumentRegular,
   CheckmarkCircle12Regular,
   Clock12Regular,
+  ShieldCheckmark16Regular,
+  Warning16Regular,
+  Play16Regular,
+  Stop16Regular,
 } from '@fluentui/react-icons';
 import {
   useStats,
@@ -42,6 +47,7 @@ import { TransactionDataGrid } from './TransactionDataGrid';
 import type { TransactionType } from '../utils/transaction-classification';
 import { filterTransactionsByTypes } from '../utils/transaction-classification';
 import { Sidebar } from './Sidebar';
+import { useVerification } from '../hooks/use-verification';
 
 
 const useStyles = makeStyles({
@@ -175,6 +181,18 @@ const useStyles = makeStyles({
   pendingBadge: {
     color: tokens.colorNeutralForeground4,
   },
+  verifiedBadge: {
+    color: tokens.colorPaletteGreenForeground1,
+    marginRight: '4px',
+  },
+  unverifiedBadge: {
+    color: tokens.colorPaletteYellowForeground2,
+    marginRight: '4px',
+  },
+  notVerifiedBadge: {
+    color: tokens.colorNeutralForeground4,
+    marginRight: '4px',
+  },
   pendingFileName: {
     color: tokens.colorNeutralForeground3,
     fontStyle: 'italic',
@@ -195,6 +213,14 @@ export const CCFVisualizerApp: React.FC = () => {
   const { isUploading, uploadError, uploadProgress } = useFileDrop();
   const [showUploadDialog, setShowUploadDialog] = React.useState(false);
   const { data: storageInfo } = useStorageQuota();
+  
+  // Verification hook
+  const {
+    isRunning: isVerifying,
+    start: startVerification,
+    stop: stopVerification,
+    clearProgress,
+  } = useVerification();
 
   // Auto-select the first file when files are loaded
   React.useEffect(() => {
@@ -329,8 +355,58 @@ export const CCFVisualizerApp: React.FC = () => {
     const pendingFiles = getPendingFiles();
     const hasFiles = (ledgerFiles && ledgerFiles.length > 0) || pendingFiles.length > 0;
     
+    // Calculate verification stats for the button
+    const verificationStats = ledgerFiles ? {
+      verified: ledgerFiles.filter(f => f.verified === true).length,
+      pending: ledgerFiles.filter(f => f.verified === null || f.verified === false).length,
+      total: ledgerFiles.length,
+    } : { verified: 0, pending: 0, total: 0 };
+    
+    const allVerified = verificationStats.verified === verificationStats.total && verificationStats.total > 0;
+    
+    const handleVerifyAll = async () => {
+      clearProgress();
+      try {
+        await startVerification({ progressReportInterval: 50 });
+      } catch (error) {
+        console.error('Failed to start verification:', error);
+      }
+    };
+    
+    const verifyButton = hasFiles ? (
+      isVerifying ? (
+        <Tooltip content="Stop verification" relationship="label">
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={<Stop16Regular />}
+            onClick={() => stopVerification()}
+          />
+        </Tooltip>
+      ) : (
+        <Tooltip 
+          content={allVerified ? "All files verified" : `Verify ${verificationStats.pending} file${verificationStats.pending !== 1 ? 's' : ''}`} 
+          relationship="label"
+        >
+          <Button
+            size="small"
+            appearance={allVerified ? "subtle" : "primary"}
+            icon={allVerified ? <ShieldCheckmark16Regular /> : <Play16Regular />}
+            onClick={handleVerifyAll}
+            disabled={allVerified}
+          />
+        </Tooltip>
+      )
+    ) : null;
+    
     return (
-      <Sidebar icon={<DocumentRegular />} title="Ledger Files" resizable collapsible>
+      <Sidebar 
+        icon={<DocumentRegular />} 
+        title="Ledger Files" 
+        resizable 
+        collapsible
+        headerActions={verifyButton}
+      >
         {hasFiles ? (
           <Tree aria-label="Ledger Files">
             {/* Existing database files */}
@@ -357,6 +433,25 @@ export const CCFVisualizerApp: React.FC = () => {
                         )}
                         {processingStatus === 'completed' && (
                           <CheckmarkCircle12Regular className={styles.completedBadge} />
+                        )}
+                        {/* Verification status badge */}
+                        {file.verified === true && (
+                          <ShieldCheckmark16Regular 
+                            className={styles.verifiedBadge} 
+                            title="Verified" 
+                          />
+                        )}
+                        {file.verified === false && (
+                          <Warning16Regular 
+                            className={styles.unverifiedBadge} 
+                            title={file.verificationError || 'Verification failed'} 
+                          />
+                        )}
+                        {file.verified === null && (
+                          <Clock12Regular 
+                            className={styles.notVerifiedBadge} 
+                            title="Not verified" 
+                          />
                         )}
                         <Badge appearance="outline" size="small" className={styles.badge}>
                           {formatBytes(file.fileSize)}

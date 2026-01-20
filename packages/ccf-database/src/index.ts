@@ -32,6 +32,11 @@ export type {
   Migration
 } from './types/migration-types';
 
+export type {
+  InsertLedgerFileResult,
+  InsertLedgerFileOptions,
+} from './worker/database-worker-client';
+
 // Schema query utilities (functions only - types come from ./types)
 export {
   getDatabaseSchema,

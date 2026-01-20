@@ -24,6 +24,34 @@ interface WorkerResponse {
 }
 
 /**
+ * Result from inserting a ledger file with verification
+ */
+export interface InsertLedgerFileResult {
+  fileId: number;
+  transactionCount: number;
+  verification: {
+    verified: boolean;
+    transactionCount: number;
+    signatureSeqNo?: number;
+    expectedRoot?: string;
+    calculatedRoot?: string;
+    error?: string;
+  } | null;
+  merkleTreeState: {
+    leaves: string[];
+    leafCount: number;
+  } | null;
+}
+
+/**
+ * Options for inserting a ledger file
+ */
+export interface InsertLedgerFileOptions {
+  existingMerkleTreeState?: { leaves: string[]; leafCount: number } | null;
+  shouldVerify?: boolean;
+}
+
+/**
  * Client for communicating with the database worker
  * Handles all message passing and promise resolution
  */
@@ -117,12 +145,18 @@ export class DatabaseWorkerClient {
   /**
    * Insert a ledger file directly in the worker using transferable ArrayBuffer
    * Transfers ownership of ArrayBuffer to worker for zero-copy performance
+   * 
+   * @param filename - Name of the ledger file
+   * @param fileSize - Size of the file in bytes
+   * @param arrayBuffer - The file contents (ownership transferred to worker)
+   * @param options - Optional parameters for verification
    */
   async insertLedgerFile(
     filename: string,
     fileSize: number,
-    arrayBuffer: ArrayBuffer
-  ): Promise<{ fileId: number; transactionCount: number }> {
+    arrayBuffer: ArrayBuffer,
+    options?: InsertLedgerFileOptions
+  ): Promise<InsertLedgerFileResult> {
     await this.readyPromise;
 
     const id = this.messageId++;
@@ -137,9 +171,15 @@ export class DatabaseWorkerClient {
       this.worker.postMessage({
         type: 'insertLedgerFile',
         id,
-        payload: { filename, fileSize, arrayBuffer },
+        payload: { 
+          filename, 
+          fileSize, 
+          arrayBuffer,
+          existingMerkleTreeState: options?.existingMerkleTreeState,
+          shouldVerify: options?.shouldVerify !== false,
+        },
       }, [arrayBuffer]);
-    }) as Promise<{ fileId: number; transactionCount: number }>;
+    }) as Promise<InsertLedgerFileResult>;
   }
 
   /**

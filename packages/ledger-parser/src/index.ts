@@ -7,7 +7,15 @@
 export { LedgerChunkV2 } from './ledger-chunk';
 
 // CBOR utilities
-export { cborArrayToText, uint8ArrayToHexString, uint8ArrayToB64String } from './cbor-utils';
+export { cborArrayToText, extractSignatureRoot, uint8ArrayToHexString, uint8ArrayToB64String } from './cbor-utils';
+
+// Merkle tree utilities
+export { 
+  MerkleTree, 
+  toHexStringLower, 
+  areByteArraysEqual, 
+  hexStringToBytes 
+} from './merkle-tree';
 
 // Types
 export type {
@@ -17,6 +25,7 @@ export type {
   PublicDomain,
   LedgerKeyValue,
   LedgerConstants,
+  ChunkVerificationResult,
 } from './types';
 
 export {

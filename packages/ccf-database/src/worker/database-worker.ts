@@ -129,11 +129,11 @@ self.onmessage = async (event: MessageEvent) => {
 
       case 'insertLedgerFile': {
         // Import LedgerChunkV2 dynamically in the worker
-        const { LedgerChunkV2 } = await import('@ccf/ledger-parser');
+        const { LedgerChunkV2, MerkleTree } = await import('@ccf/ledger-parser');
 
-        const { filename, fileSize, arrayBuffer } = payload;
+        const { filename, fileSize, arrayBuffer, existingMerkleTreeState, shouldVerify } = payload;
 
-        log(`Processing ledger file: ${filename} (${fileSize} bytes)`);
+        log(`Processing ledger file: ${filename} (${fileSize} bytes), verify: ${shouldVerify !== false}`);
 
         // Insert file record
         const fileResult = execSQL(db, `
@@ -145,7 +145,7 @@ self.onmessage = async (event: MessageEvent) => {
           fileId = (fileResult[0] as Record<string, unknown>).id as number;
           execSQL(db, `
             UPDATE ledger_files 
-            SET file_size = ?, updated_at = CURRENT_TIMESTAMP
+            SET file_size = ?, updated_at = CURRENT_TIMESTAMP, verified = NULL, verified_at = NULL, verification_error = NULL
             WHERE id = ?
           `, [fileSize, fileId]);
         } else {
@@ -159,8 +159,46 @@ self.onmessage = async (event: MessageEvent) => {
 
         log(`File ID: ${fileId}, parsing transactions...`);
 
-        // Parse ledger file
+        // Parse ledger file with optional verification
         const ledgerChunk = new LedgerChunkV2(filename, arrayBuffer);
+        
+        // If we have existing Merkle tree state from a previous chunk, reconstruct it
+        let merkleTree: InstanceType<typeof MerkleTree> | undefined;
+        if (existingMerkleTreeState && shouldVerify !== false) {
+          // Reconstruct the tree from serialized leaves using the factory method
+          const existingLeaves = existingMerkleTreeState.leaves.map((leafHex: string) => {
+            const bytes = new Uint8Array(leafHex.length / 2);
+            for (let i = 0; i < leafHex.length; i += 2) {
+              bytes[i / 2] = parseInt(leafHex.substr(i, 2), 16);
+            }
+            return bytes;
+          });
+          merkleTree = MerkleTree.fromLeaves(existingLeaves);
+        }
+
+        // Define type for parsed transactions
+        type ParsedTransaction = NonNullable<Awaited<ReturnType<typeof ledgerChunk.readSingleTransaction>>>;
+        
+        // Parse and optionally verify the chunk
+        let verificationResult: { verified: boolean; transactionCount: number; signatureSeqNo?: number; expectedRoot?: string; calculatedRoot?: string; error?: string };
+        let updatedTree: InstanceType<typeof MerkleTree>;
+        let transactionsToInsert: ParsedTransaction[] = [];
+        
+        if (shouldVerify !== false) {
+          const parseResult = await ledgerChunk.parseAndVerify(merkleTree);
+          verificationResult = parseResult.result;
+          updatedTree = parseResult.merkleTree;
+          transactionsToInsert = parseResult.transactions;
+        } else {
+          // Parse without verification
+          verificationResult = { verified: false, transactionCount: 0 };
+          updatedTree = new MerkleTree();
+          for await (const transaction of ledgerChunk.readAllTransactions()) {
+            if (transaction) {
+              transactionsToInsert.push(transaction);
+            }
+          }
+        }
 
         // Import CBOR decoder
         const { cborArrayToText } = await import('@ccf/ledger-parser');
@@ -171,9 +209,9 @@ self.onmessage = async (event: MessageEvent) => {
         const deleteBinds: unknown[][] = [];
         let transactionCount = 0;
 
-        log('Parsing all transactions into memory...');
+        log('Preparing transactions for insert...');
 
-        for await (const transaction of ledgerChunk.readAllTransactions()) {
+        for (const transaction of transactionsToInsert) {
           const seqNo = transaction.gcmHeader.seqNo;
 
           // Collect transaction data
@@ -291,7 +329,41 @@ self.onmessage = async (event: MessageEvent) => {
 
           log(`Completed: ${transactionCount} transactions inserted`);
 
-          result = { fileId, transactionCount };
+          // Update verification status in the database
+          if (shouldVerify !== false) {
+            const verified = verificationResult.verified;
+            const verificationError = verificationResult.error || null;
+            
+            execSQL(db, `
+              UPDATE ledger_files 
+              SET verified = ?, verified_at = CURRENT_TIMESTAMP, verification_error = ?
+              WHERE id = ?
+            `, [verified ? 1 : 0, verificationError, fileId]);
+            
+            log(`Verification status: ${verified ? 'PASSED' : 'FAILED'}${verificationError ? ` - ${verificationError}` : ''}`);
+          }
+
+          // Serialize Merkle tree state for continuation to next chunk
+          // We store the leaves as hex strings since they need to be serialized
+          const { toHexStringLower } = await import('@ccf/ledger-parser');
+          const merkleTreeState = shouldVerify !== false ? {
+            leaves: updatedTree.Leaves.map((leaf: Uint8Array) => toHexStringLower(leaf)),
+            leafCount: updatedTree.leafCount,
+          } : null;
+
+          result = { 
+            fileId, 
+            transactionCount,
+            verification: shouldVerify !== false ? {
+              verified: verificationResult.verified,
+              transactionCount: verificationResult.transactionCount,
+              signatureSeqNo: verificationResult.signatureSeqNo,
+              expectedRoot: verificationResult.expectedRoot,
+              calculatedRoot: verificationResult.calculatedRoot,
+              error: verificationResult.error,
+            } : null,
+            merkleTreeState,
+          };
         } catch (err) {
           db.exec('ROLLBACK');
           // Always finalize statements even on error

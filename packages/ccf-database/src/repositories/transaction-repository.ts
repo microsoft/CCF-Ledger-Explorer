@@ -286,6 +286,54 @@ export class TransactionRepository extends BaseRepository {
   }
 
   /**
+   * Get transactions for a specific file with hash data for per-chunk verification
+   * This is optimized for chunk-based verification where we verify once per chunk
+   */
+  async getByFileIdForVerification(fileId: number): Promise<Array<{
+    txId: number;
+    txHash: Uint8Array;
+    tables: Array<{ storeName: string; value: string }>;
+  }>> {
+    const transactionResult = await this.exec(
+      `SELECT sequence_no, tx_digest
+       FROM transactions
+       WHERE file_id = ?
+       ORDER BY sequence_no`,
+      [fileId]
+    );
+
+    const results: Array<{
+      txId: number;
+      txHash: Uint8Array;
+      tables: Array<{ storeName: string; value: string }>;
+    }> = [];
+
+    for (const tx of transactionResult) {
+      const txId = tx.sequence_no as number;
+      const txHash = new Uint8Array(tx.tx_digest as ArrayBuffer);
+
+      // Only fetch signature data for this transaction
+      const writesResult = await this.exec(
+        `SELECT map_name, value_text
+         FROM kv_writes
+         WHERE sequence_no = ? 
+         AND map_name LIKE '%public:ccf.internal.signatures%'
+         AND value_text IS NOT NULL`,
+        [txId]
+      );
+
+      const tables = writesResult.map(row => ({
+        storeName: row.map_name as string,
+        value: row.value_text as string,
+      }));
+
+      results.push({ txId, txHash, tables });
+    }
+
+    return results;
+  }
+
+  /**
    * Search transactions by key name
    */
   async searchByKey(keyName: string, limit = 50): Promise<SearchResult[]> {

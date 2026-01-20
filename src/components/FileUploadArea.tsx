@@ -260,23 +260,16 @@ export const FileUploadArea: React.FC = () => {
       const filesToImport = allPendingFiles.filter(f => selectedFilenames.has(f.name));
       
       if (filesToImport.length > 0) {
-        await handleFiles(filesToImport);
+        // Pass shouldVerify option to handleFiles - verification now happens during import
+        await handleFiles(filesToImport, { shouldVerify: autoVerify });
       }
 
       // Clear state after successful import
       setPendingFiles([]);
       setChunkFiles([]);
       
-      // Start verification in background if requested
-      if (autoVerify) {
-        // Small delay to ensure database queries are updated
-        setTimeout(() => {
-          verificationService.clearSavedProgress(); // Start fresh
-          verificationService.startVerification().catch(err => {
-            console.error('Auto-verification failed to start:', err);
-          });
-        }, 500);
-      }
+      // Clear saved verification progress since we now verify during import
+      verificationService.clearSavedProgress();
     } catch (error) {
       setImportError(error instanceof Error ? error.message : 'Failed to import files');
     } finally {

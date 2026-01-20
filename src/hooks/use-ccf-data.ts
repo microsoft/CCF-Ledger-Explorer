@@ -284,15 +284,23 @@ export const useUploadLedgerFile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (file: File): Promise<{ fileId: number; transactionCount: number }> => {
+    mutationFn: async (params: { 
+      file: File; 
+      existingMerkleTreeState?: { leaves: string[]; leafCount: number } | null;
+      shouldVerify?: boolean;
+    }) => {
+      const { file, existingMerkleTreeState, shouldVerify } = params;
       const db = await getDatabase();
       
       // Read file into ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       
       // Transfer the ArrayBuffer to the worker for processing
-      // The worker will parse and insert everything
-      const result = await db.insertLedgerFileWithData(file.name, file.size, arrayBuffer);
+      // The worker will parse, verify, and insert everything
+      const result = await db.insertLedgerFileWithData(file.name, file.size, arrayBuffer, {
+        existingMerkleTreeState,
+        shouldVerify: shouldVerify !== false,
+      });
       
       return result;
     },
@@ -448,11 +456,18 @@ export const useFileDrop = () => {
     getUploadProgressSnapshot
   );
 
-  const handleFiles = useCallback(async (files: FileList | File[]) => {
+  const handleFiles = useCallback(async (
+    files: FileList | File[], 
+    options?: { shouldVerify?: boolean }
+  ) => {
     const fileArray = Array.from(files).filter(f => f.size > 0);
     const totalFiles = fileArray.length;
     const allFiles = fileArray.map(f => f.name);
     const completedFiles = new Set<string>();
+    const shouldVerify = options?.shouldVerify !== false;
+    
+    // Track Merkle tree state across chunks for verification continuity
+    let currentMerkleTreeState: { leaves: string[]; leafCount: number } | null = null;
     
     // Show all files immediately in the pending state
     if (totalFiles > 0) {
@@ -479,7 +494,17 @@ export const useFileDrop = () => {
           processingFile: file.name,
         });
         
-        await uploadMutation.mutateAsync(file);
+        // Pass the existing Merkle tree state from previous chunk
+        const result = await uploadMutation.mutateAsync({
+          file,
+          existingMerkleTreeState: currentMerkleTreeState,
+          shouldVerify,
+        });
+        
+        // Carry forward the Merkle tree state for the next chunk
+        if (result.merkleTreeState) {
+          currentMerkleTreeState = result.merkleTreeState;
+        }
         
         // Mark as completed
         completedFiles.add(file.name);
