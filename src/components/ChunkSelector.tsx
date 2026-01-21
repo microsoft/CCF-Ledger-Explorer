@@ -226,10 +226,13 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
   const [isClearing, setIsClearing] = useState(false);
   const [autoVerify, setAutoVerify] = useState(defaultAutoVerify);
 
-  // Group files by sequence range and detect duplicates/gaps using shared validation logic
+  // Group files by sequence range and detect duplicates/gaps/overlaps using shared validation logic
   const { chunkGroups, gaps } = useMemo(() => {
     const analysis = analyzeLedgerSequence(files);
-    return { chunkGroups: analysis.groups, gaps: analysis.gaps };
+    return { 
+      chunkGroups: analysis.groups, 
+      gaps: analysis.gaps,
+    };
   }, [files]);
 
   // Initialize selection state
@@ -362,6 +365,29 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
       };
     }
 
+    // Check for overlaps in selection
+    const selectedOverlaps: Array<{ first: ChunkGroup; second: ChunkGroup }> = [];
+    for (let i = 0; i < sortedSelected.length - 1; i++) {
+      const current = sortedSelected[i];
+      const next = sortedSelected[i + 1];
+      // Overlap: current ends at or after next starts
+      if (current.endNo >= next.startNo) {
+        selectedOverlaps.push({ first: current, second: next });
+      }
+    }
+
+    // If there are overlaps, return error immediately
+    if (selectedOverlaps.length > 0) {
+      const overlapDescs = selectedOverlaps.map(o => 
+        `${o.first.rangeKey} overlaps with ${o.second.rangeKey}`
+      );
+      return {
+        state: 'error' as const,
+        message: `Overlapping chunks detected: ${overlapDescs.join('; ')}`,
+        overlapCount: selectedOverlaps.length,
+      };
+    }
+
     // Check for gaps in selection
     const selectedGaps: SequenceGap[] = [];
     for (let i = 0; i < sortedSelected.length - 1; i++) {
@@ -404,35 +430,24 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
 
   // Compute whether verification is possible considering existing data + new selection
   const canVerifyWithExisting = useMemo(() => {
-    // Parse existing ranges into objects
-    const existingParsed = Array.from(existingRanges).map(rangeKey => {
-      const [start, end] = rangeKey.split('-').map(Number);
-      return { startNo: start, endNo: end };
-    });
+    // Convert existing ranges to objects with filename format
+    const existingAsFiles = Array.from(existingRanges).map(rangeKey => ({
+      filename: `ledger_${rangeKey}.committed`,
+    }));
 
     // Get selected new chunks
     const selectedGroups = chunkGroups.filter(g => selection.checkedRanges.has(g.rangeKey));
-    const selectedParsed = selectedGroups.map(g => ({ startNo: g.startNo, endNo: g.endNo }));
+    const selectedAsFiles = selectedGroups.map(g => ({ filename: g.files[0].filename }));
 
-    // Combine and sort all ranges
-    const allRanges = [...existingParsed, ...selectedParsed].sort((a, b) => a.startNo - b.startNo);
+    // Combine and analyze using shared validation logic
+    const allFiles = [...existingAsFiles, ...selectedAsFiles];
+    
+    if (allFiles.length === 0) return false;
 
-    if (allRanges.length === 0) return false;
-
-    // Must start from sequence 1
-    if (allRanges[0].startNo !== 1) return false;
-
-    // Check for gaps in the combined ranges
-    let expectedStart = 1;
-    for (const range of allRanges) {
-      if (range.startNo > expectedStart) {
-        // There's a gap
-        return false;
-      }
-      expectedStart = Math.max(expectedStart, range.endNo + 1);
-    }
-
-    return true;
+    const analysis = analyzeLedgerSequence(allFiles);
+    
+    // Can verify if: starts at 1, no gaps, no overlaps
+    return analysis.startsAtOne && analysis.isContiguous && !analysis.hasOverlaps;
   }, [existingRanges, chunkGroups, selection]);
 
   // Get selected files for import (excludes already-loaded files)
