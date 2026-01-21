@@ -90,6 +90,25 @@ export function useVerification(): UseVerificationResult {
     eventsSetRef.current = true;
   }, [queryClient]);
 
+  // Sync isRunning state with service - poll periodically when running
+  useEffect(() => {
+    // Initial sync
+    setIsRunning(verificationService.isRunning());
+    
+    // Poll to keep in sync while verification might be running
+    const interval = setInterval(() => {
+      const serviceIsRunning = verificationService.isRunning();
+      setIsRunning(prev => {
+        if (prev !== serviceIsRunning) {
+          return serviceIsRunning;
+        }
+        return prev;
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Initialize running state from service and restore saved progress
   useEffect(() => {
     setIsRunning(verificationService.isRunning());

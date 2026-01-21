@@ -8,7 +8,7 @@ import type {
   WorkerInMessage, 
   WorkerOutMessage,
   VerificationConfig,
-  VerificationTransaction,
+  ChunkTransactionsResponse,
   ChunkInfo,
 } from '../types/verification-types';
 
@@ -60,7 +60,7 @@ class VerificationWorker {
         this.handleResponse(message.requestId, message.chunks);
         break;
       case 'chunkTransactionsResponse':
-        this.handleResponse(message.requestId, message.transactions);
+        this.handleResponse(message.requestId, { transactions: message.transactions, lastSignature: message.lastSignature });
         break;
       case 'updateChunkVerificationResponse':
         this.handleResponse(message.requestId, message.success);
@@ -90,7 +90,7 @@ class VerificationWorker {
   /**
    * Request transactions for a specific chunk/file
    */
-  private async requestChunkTransactions(fileId: number): Promise<VerificationTransaction[]> {
+  private async requestChunkTransactions(fileId: number): Promise<ChunkTransactionsResponse> {
     const id = ++this.requestId;
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve: resolve as (data: unknown) => void, reject });
@@ -257,76 +257,62 @@ class VerificationWorker {
     // Track the initial leaf count (from previous chunks)
     const initialLeafCount = this.merkleTree.Leaves.length;
     
-    // Get transactions for this chunk
-    const transactions = await this.requestChunkTransactions(chunk.id);
+    // Get transactions and last signature for this chunk
+    const { transactions, lastSignature } = await this.requestChunkTransactions(chunk.id);
     
-    // Track the last signature found in this chunk
-    let lastSignatureSeqNo: number | undefined;
-    let lastExpectedRoot: string | undefined;
+    // Find the index of the last signature transaction (if any)
     let lastSignatureTransactionIndex: number | undefined;
+    if (lastSignature) {
+      lastSignatureTransactionIndex = transactions.findIndex(tx => tx.txId === lastSignature.txId);
+    }
 
-    // Process all transactions in the chunk
-    for (let i = 0; i < transactions.length; i++) {
-      const transaction = transactions[i];
+    // Process all transactions in the chunk - just add hashes to tree
+    for (const transaction of transactions) {
       const txHash = new Uint8Array(transaction.txHash);
-
-      // Check for signature transaction BEFORE adding to tree
-      const signatureTx = transaction.tables.find(table => 
-        table.storeName.includes('public:ccf.internal.signatures')
-      );
-
-      if (signatureTx) {
-        try {
-          const signatures = JSON.parse(signatureTx.value);
-          if (signatures.root) {
-            // Remember this signature - we'll verify only the last one
-            lastSignatureSeqNo = transaction.txId;
-            lastExpectedRoot = signatures.root;
-            lastSignatureTransactionIndex = i;
-          }
-        } catch (parseError) {
-          console.warn(`Failed to parse signature data at transaction ${transaction.txId}:`, parseError);
-        }
-      }
-
-      // Add transaction hash to Merkle tree AFTER checking signature
       this.merkleTree.insertLeaf(txHash);
     }
 
-    // Only verify once at the end, using the last signature transaction found
-    if (lastExpectedRoot !== undefined && lastSignatureTransactionIndex !== undefined) {
-      // Calculate the correct leaf index accounting for leaves from previous chunks
-      const targetLeafCount = initialLeafCount + lastSignatureTransactionIndex;
-      const leavesToVerify = this.merkleTree.Leaves.slice(0, targetLeafCount);
-      const tempTree = MerkleTree.fromLeaves([...leavesToVerify]);
-      
-      const calculatedRootBytes = await tempTree.calculateRootHash();
-      const calculatedRoot = toHexStringLower(calculatedRootBytes);
-      const expectedRootBytes = hexStringToBytes(lastExpectedRoot);
-      
-      if (areByteArraysEqual(calculatedRootBytes, expectedRootBytes)) {
-        console.log(`✅ Chunk ${chunk.filename} verified at signature ${lastSignatureSeqNo}`);
-        return {
-          fileId: chunk.id,
-          filename: chunk.filename,
-          verified: true,
-          signatureSeqNo: lastSignatureSeqNo,
-          expectedRoot: lastExpectedRoot,
-          calculatedRoot,
-          transactionCount: transactions.length,
-        };
-      } else {
-        console.error(`❌ Chunk ${chunk.filename} FAILED at signature ${lastSignatureSeqNo}`);
-        return {
-          fileId: chunk.id,
-          filename: chunk.filename,
-          verified: false,
-          error: `Merkle root mismatch at transaction ${lastSignatureSeqNo}. Expected: ${lastExpectedRoot}, Calculated: ${calculatedRoot}`,
-          signatureSeqNo: lastSignatureSeqNo,
-          expectedRoot: lastExpectedRoot,
-          calculatedRoot,
-          transactionCount: transactions.length,
-        };
+    // Only verify if there's a signature in this chunk
+    if (lastSignature && lastSignatureTransactionIndex !== undefined && lastSignatureTransactionIndex >= 0) {
+      try {
+        const signatures = JSON.parse(lastSignature.signatureData);
+        if (signatures.root) {
+          // Calculate the correct leaf index accounting for leaves from previous chunks
+          const targetLeafCount = initialLeafCount + lastSignatureTransactionIndex;
+          const leavesToVerify = this.merkleTree.Leaves.slice(0, targetLeafCount);
+          const tempTree = MerkleTree.fromLeaves([...leavesToVerify]);
+          
+          const calculatedRootBytes = await tempTree.calculateRootHash();
+          const calculatedRoot = toHexStringLower(calculatedRootBytes);
+          const expectedRootBytes = hexStringToBytes(signatures.root);
+          
+          if (areByteArraysEqual(calculatedRootBytes, expectedRootBytes)) {
+            console.log(`✅ Chunk ${chunk.filename} verified at signature ${lastSignature.txId}`);
+            return {
+              fileId: chunk.id,
+              filename: chunk.filename,
+              verified: true,
+              signatureSeqNo: lastSignature.txId,
+              expectedRoot: signatures.root,
+              calculatedRoot,
+              transactionCount: transactions.length,
+            };
+          } else {
+            console.error(`❌ Chunk ${chunk.filename} FAILED at signature ${lastSignature.txId}`);
+            return {
+              fileId: chunk.id,
+              filename: chunk.filename,
+              verified: false,
+              error: `Merkle root mismatch at transaction ${lastSignature.txId}. Expected: ${signatures.root}, Calculated: ${calculatedRoot}`,
+              signatureSeqNo: lastSignature.txId,
+              expectedRoot: signatures.root,
+              calculatedRoot,
+              transactionCount: transactions.length,
+            };
+          }
+        }
+      } catch (parseError) {
+        console.warn(`Failed to parse signature data at transaction ${lastSignature.txId}:`, parseError);
       }
     }
 
@@ -344,7 +330,7 @@ class VerificationWorker {
    * Rebuild Merkle tree for a chunk (used when resuming)
    */
   private async rebuildMerkleTreeForChunk(fileId: number): Promise<void> {
-    const transactions = await this.requestChunkTransactions(fileId);
+    const { transactions } = await this.requestChunkTransactions(fileId);
     
     for (const transaction of transactions) {
       if (this.shouldStop) return;

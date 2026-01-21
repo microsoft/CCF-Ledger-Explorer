@@ -303,32 +303,34 @@ export class VerificationService {
       this.worker?.postMessage({
         type: 'chunkTransactionsResponse',
         requestId,
-        transactions: []
+        transactions: [],
+        lastSignature: null
       } as WorkerInMessage);
       return;
     }
 
     try {
-      const transactions = await this.database.transactions.getByFileIdForVerification(fileId);
+      const { transactions, lastSignature } = await this.database.transactions.getByFileIdForVerification(fileId);
       
       // Convert Uint8Array to regular array for postMessage serialization
       const serializableTransactions: VerificationTransaction[] = transactions.map(tx => ({
         txId: tx.txId,
         txHash: Array.from(tx.txHash),
-        tables: tx.tables
       }));
       
       this.worker?.postMessage({
         type: 'chunkTransactionsResponse',
         requestId,
-        transactions: serializableTransactions
+        transactions: serializableTransactions,
+        lastSignature
       } as WorkerInMessage);
     } catch (error) {
       console.error('Error getting chunk transactions:', error);
       this.worker?.postMessage({
         type: 'chunkTransactionsResponse',
         requestId,
-        transactions: []
+        transactions: [],
+        lastSignature: null
       } as WorkerInMessage);
     }
   }

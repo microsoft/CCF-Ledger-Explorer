@@ -27,15 +27,22 @@ export interface VerificationConfig {
 }
 
 /**
- * Transaction data with related tables for verification
+ * Transaction data for verification (just id and hash)
  */
 export interface VerificationTransaction {
   txId: number;
   txHash: number[]; // Uint8Array serialized as number array for worker transfer
-  tables: Array<{
-    storeName: string;
-    value: string;
-  }>;
+}
+
+/**
+ * Response containing chunk transactions and last signature data
+ */
+export interface ChunkTransactionsResponse {
+  transactions: VerificationTransaction[];
+  lastSignature: {
+    txId: number;
+    signatureData: string;
+  } | null;
 }
 
 /**
@@ -69,7 +76,7 @@ export type WorkerInMessage =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'chunksResponse'; requestId: number; chunks: ChunkInfo[] }
-  | { type: 'chunkTransactionsResponse'; requestId: number; transactions: VerificationTransaction[] }
+  | { type: 'chunkTransactionsResponse'; requestId: number; transactions: VerificationTransaction[]; lastSignature: { txId: number; signatureData: string } | null }
   | { type: 'updateChunkVerificationResponse'; requestId: number; success: boolean }
   // Legacy - kept for backwards compatibility
   | { type: 'totalCountResponse'; requestId: number; count: number }

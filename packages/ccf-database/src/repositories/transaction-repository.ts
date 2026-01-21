@@ -289,11 +289,11 @@ export class TransactionRepository extends BaseRepository {
    * Get transactions for a specific file with hash data for per-chunk verification
    * This is optimized for chunk-based verification where we verify once per chunk
    */
-  async getByFileIdForVerification(fileId: number): Promise<Array<{
-    txId: number;
-    txHash: Uint8Array;
-    tables: Array<{ storeName: string; value: string }>;
-  }>> {
+  async getByFileIdForVerification(fileId: number): Promise<{
+    transactions: Array<{ txId: number; txHash: Uint8Array }>;
+    lastSignature: { txId: number; signatureData: string } | null;
+  }> {
+    // Fetch all transactions with their hashes
     const transactionResult = await this.exec(
       `SELECT sequence_no, tx_digest
        FROM transactions
@@ -302,35 +302,32 @@ export class TransactionRepository extends BaseRepository {
       [fileId]
     );
 
-    const results: Array<{
-      txId: number;
-      txHash: Uint8Array;
-      tables: Array<{ storeName: string; value: string }>;
-    }> = [];
+    const transactions = transactionResult.map(tx => ({
+      txId: tx.sequence_no as number,
+      txHash: new Uint8Array(tx.tx_digest as ArrayBuffer),
+    }));
 
-    for (const tx of transactionResult) {
-      const txId = tx.sequence_no as number;
-      const txHash = new Uint8Array(tx.tx_digest as ArrayBuffer);
+    // Fetch the last signature transaction for this file in a single query
+    const lastSignatureResult = await this.exec(
+      `SELECT w.sequence_no, w.value_text
+       FROM kv_writes w
+       JOIN transactions t ON w.sequence_no = t.sequence_no
+       WHERE t.file_id = ?
+         AND w.map_name LIKE '%public:ccf.internal.signatures%'
+         AND w.value_text IS NOT NULL
+       ORDER BY w.sequence_no DESC
+       LIMIT 1`,
+      [fileId]
+    );
 
-      // Only fetch signature data for this transaction
-      const writesResult = await this.exec(
-        `SELECT map_name, value_text
-         FROM kv_writes
-         WHERE sequence_no = ? 
-         AND map_name LIKE '%public:ccf.internal.signatures%'
-         AND value_text IS NOT NULL`,
-        [txId]
-      );
+    const lastSignature = lastSignatureResult.length > 0
+      ? {
+          txId: lastSignatureResult[0].sequence_no as number,
+          signatureData: lastSignatureResult[0].value_text as string,
+        }
+      : null;
 
-      const tables = writesResult.map(row => ({
-        storeName: row.map_name as string,
-        value: row.value_text as string,
-      }));
-
-      results.push({ txId, txHash, tables });
-    }
-
-    return results;
+    return { transactions, lastSignature };
   }
 
   /**
