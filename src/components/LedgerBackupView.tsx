@@ -110,7 +110,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const LedgerBackupView: React.FC = () => {
+export interface LedgerBackupViewProps {
+  onImportComplete?: () => void;
+}
+
+export const LedgerBackupView: React.FC<LedgerBackupViewProps> = ({ onImportComplete }) => {
   const styles = useStyles();
   const clearAllDataMutation = useClearAllData();
   const { data: existingLedgerFiles } = useLedgerFiles();
@@ -183,6 +187,9 @@ export const LedgerBackupView: React.FC = () => {
   };
 
   const performImport = async (selectedFiles: ChunkFileInfo[], mode: ImportMode, autoVerify: boolean) => {
+    // Close dialog immediately when import starts
+    onImportComplete?.();
+
     setIsDownloading(true);
     setDownloadProgress(null);
 
@@ -210,7 +217,8 @@ export const LedgerBackupView: React.FC = () => {
       
       // If autoVerify is enabled, start the verification service to verify all chunks
       if (autoVerify) {
-        await verificationService.startVerification({ progressReportInterval: 50 });
+        // Start verification without awaiting - let it run in background
+        verificationService.startVerification({ progressReportInterval: 50 });
       }
     } else {
       console.error('No files downloaded');

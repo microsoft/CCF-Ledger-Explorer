@@ -126,7 +126,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const FileUploadArea: React.FC = () => {
+export interface FileUploadAreaProps {
+  onImportComplete?: () => void;
+}
+
+export const FileUploadArea: React.FC<FileUploadAreaProps> = ({ onImportComplete }) => {
   const styles = useStyles();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -275,6 +279,9 @@ export const FileUploadArea: React.FC = () => {
   ) => {
     if (selectedFiles.length === 0) return;
 
+    // Close dialog immediately when import starts
+    onImportComplete?.();
+
     setIsImporting(true);
     setImportError(null);
 
@@ -306,14 +313,15 @@ export const FileUploadArea: React.FC = () => {
       // If autoVerify is enabled, start the verification service to verify all chunks
       // This runs after import and provides UI feedback on verification progress
       if (autoVerify) {
-        await verificationService.startVerification({ progressReportInterval: 50 });
+        // Start verification without awaiting - let it run in background
+        verificationService.startVerification({ progressReportInterval: 50 });
       }
     } catch (error) {
       setImportError(error instanceof Error ? error.message : 'Failed to import files');
     } finally {
       setIsImporting(false);
     }
-  }, [clearAllDataMutation, handleFiles]);
+  }, [clearAllDataMutation, handleFiles, onImportComplete]);
 
   // Called from ChunkSelector's onImport - uses overwrite preference and autoVerify from ChunkSelector
   const handleImportRequest = useCallback((selectedFiles: ChunkFileInfo[], overwriteExisting: boolean, autoVerify: boolean) => {

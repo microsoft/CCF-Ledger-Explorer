@@ -131,7 +131,11 @@ export const useDownloadMstFiles = () => {
     };
 };
 
-export const MstLedgerImportView: React.FC = () => {
+export interface MstLedgerImportViewProps {
+    onImportComplete?: () => void;
+}
+
+export const MstLedgerImportView: React.FC<MstLedgerImportViewProps> = ({ onImportComplete }) => {
     const styles = useStyles();
     const clearAllDataMutation = useClearAllData();
     const { data: existingLedgerFiles } = useLedgerFiles();
@@ -205,6 +209,9 @@ export const MstLedgerImportView: React.FC = () => {
     };
 
     const performImport = async (selectedFiles: ChunkFileInfo[], mode: ImportMode, autoVerify: boolean) => {
+        // Close dialog immediately when import starts
+        onImportComplete?.();
+
         setIsDownloading(true);
         setDownloadProgress(null);
 
@@ -237,7 +244,8 @@ export const MstLedgerImportView: React.FC = () => {
             
             // If autoVerify is enabled, start the verification service to verify all chunks
             if (autoVerify) {
-                await verificationService.startVerification({ progressReportInterval: 50 });
+                // Start verification without awaiting - let it run in background
+                verificationService.startVerification({ progressReportInterval: 50 });
             }
         } else {
             console.error('No files downloaded');

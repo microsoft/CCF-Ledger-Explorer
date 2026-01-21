@@ -311,47 +311,42 @@ export const CCFVisualizerApp: React.FC = () => {
     return uploadProgress.allFiles.filter(name => !existingFilenames.has(name));
   };
 
-  // Show upload screen if no data
-  if (!hasData) {
-    return (
-      <div className={styles.container}>
-        {/* Upload Error Message */}
-        {uploadError && (
-          <MessageBar intent="error">
-            Failed to upload file: {uploadError.message}
-          </MessageBar>
-        )}
+  // Render empty state content (no early return - dialog rendered at end)
+  const renderEmptyState = () => (
+    <div className={styles.container}>
+      {/* Upload Error Message */}
+      {uploadError && (
+        <MessageBar intent="error">
+          Failed to upload file: {uploadError.message}
+        </MessageBar>
+      )}
 
-        {/* Upload Progress */}
-        {isUploading && (
-          <MessageBar intent="info">
-            <div className={styles.uploadProgress}>
-              <Spinner size="tiny" />
-              <span>Processing ledger file...</span>
-            </div>
-          </MessageBar>
-        )}
+      {/* Upload Progress */}
+      {isUploading && (
+        <MessageBar intent="info">
+          <div className={styles.uploadProgress}>
+            <Spinner size="tiny" />
+            <span>Processing ledger file...</span>
+          </div>
+        </MessageBar>
+      )}
 
-        <div className={styles.centerContent}>
-          {/* Upload Files Button */}
-          <Button
-            size='large'
-            appearance="primary"
-            icon={<DocumentAdd24Regular />}
-            onClick={() => setShowUploadDialog(true)}
-          >
-            Add Files
-          </Button>
-        </div>
-
-        {/* Add Files Dialog - also needed for empty state */}
-        <AddFilesWizard
-          open={showUploadDialog}
-          onOpenChange={setShowUploadDialog}
-        />
+      <div className={styles.centerContent}>
+        {/* Upload Files Button */}
+        <Button
+          size='large'
+          appearance="primary"
+          icon={<DocumentAdd24Regular />}
+          onClick={() => setShowUploadDialog(true)}
+        >
+          Add Files
+        </Button>
       </div>
-    );
-  }
+    </div>
+  );
+
+  // Empty state is rendered inline, not as early return
+  // This ensures single AddFilesWizard instance persists across hasData changes
 
   const renderSideBar = () => {
     const pendingFiles = getPendingFiles();
@@ -548,22 +543,29 @@ export const CCFVisualizerApp: React.FC = () => {
   const showPagination = transactions && transactions.length > 0 && totalTransactions && totalTransactions > pageSize;
 
   // Main layout: container (column) -> messages, mainContent (row: sidebar + canvas), footer
+  // If no data, show empty state. Dialog is always rendered at end to prevent remounting.
   return (
-    <div className={styles.container}>
-      {/* Status Messages */}
-      {isUploading && (
-        <MessageBar intent="info">
-          <div className={styles.uploadProgress}>
-            <Spinner size="tiny" />
-            <span>Processing ledger file...</span>
-          </div>
-        </MessageBar>
-      )}
-      {uploadError && (
-        <MessageBar intent="error">
-          Failed to upload file: {uploadError.message}
-        </MessageBar>
-      )}
+    <>
+      {!hasData ? (
+        // Empty state
+        renderEmptyState()
+      ) : (
+        // Main content with data
+        <div className={styles.container}>
+          {/* Status Messages */}
+          {isUploading && (
+            <MessageBar intent="info">
+              <div className={styles.uploadProgress}>
+                <Spinner size="tiny" />
+                <span>Processing ledger file...</span>
+              </div>
+            </MessageBar>
+          )}
+          {uploadError && (
+            <MessageBar intent="error">
+              Failed to upload file: {uploadError.message}
+            </MessageBar>
+          )}
 
       {/* Main Content: Sidebar + Canvas */}
       <div className={styles.mainContent}>
@@ -642,12 +644,14 @@ export const CCFVisualizerApp: React.FC = () => {
           {storageInfo?.quota && ` • Storage: ${formatBytes(storageInfo.quota.usage)} / ${formatBytes(storageInfo.quota.quota)} (${storageInfo.quota.usagePercentage.toFixed(1)}%)`}
         </Caption1>
       </footer>
+        </div>
+      )}
 
-      {/* Add Files Dialog - always available */}
+      {/* Add Files Dialog - SINGLE instance outside conditional to prevent remounting */}
       <AddFilesWizard
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
       />
-    </div>
+    </>
   );
 };
