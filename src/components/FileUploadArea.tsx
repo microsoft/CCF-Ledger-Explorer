@@ -292,7 +292,7 @@ export const FileUploadArea: React.FC = () => {
       const filesToImport = allPendingFiles.filter(f => selectedFilenames.has(f.name));
       
       if (filesToImport.length > 0) {
-        // Pass shouldVerify option to handleFiles - verification now happens during import
+        // Import files - shouldVerify controls inline merkle verification during parsing
         await handleFiles(filesToImport, { shouldVerify: autoVerify });
       }
 
@@ -300,8 +300,14 @@ export const FileUploadArea: React.FC = () => {
       setPendingFiles([]);
       setChunkFiles([]);
       
-      // Clear saved verification progress since we now verify during import
+      // Clear saved verification progress
       verificationService.clearSavedProgress();
+      
+      // If autoVerify is enabled, start the verification service to verify all chunks
+      // This runs after import and provides UI feedback on verification progress
+      if (autoVerify) {
+        await verificationService.startVerification({ progressReportInterval: 50 });
+      }
     } catch (error) {
       setImportError(error instanceof Error ? error.message : 'Failed to import files');
     } finally {

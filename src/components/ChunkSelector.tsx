@@ -752,12 +752,11 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
         </MessageBar>
       )}
 
-      {/* Warning for not starting from sequence 1 */}
-      {validation.state !== 'empty' && validation.state !== 'error' && 
-       'startsFromBeginning' in validation && !validation.startsFromBeginning && (
+      {/* Warning for not starting from sequence 1 (considering existing data) */}
+      {validation.state !== 'empty' && validation.state !== 'error' && !canVerifyWithExisting && (
         <MessageBar intent="warning">
           <MessageBarBody>
-            Selection doesn't start from sequence 1. Cryptographic verification of the ledger chain will not be possible without a complete sequence from the beginning.
+            Combined data doesn't start from sequence 1 or has gaps. Cryptographic verification of the ledger chain will not be possible without a complete contiguous sequence from the beginning.
           </MessageBarBody>
         </MessageBar>
       )}

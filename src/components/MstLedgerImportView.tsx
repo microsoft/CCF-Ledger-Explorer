@@ -222,7 +222,7 @@ export const MstLedgerImportView: React.FC = () => {
         );
 
         if (downloadedFiles.length > 0) {
-            // Pass shouldVerify option to handleFiles - verification now happens during import
+            // Import files - shouldVerify controls inline merkle verification during parsing
             await handleFiles(downloadedFiles, { shouldVerify: autoVerify });
 
             if (ledgerDomain) {
@@ -232,8 +232,13 @@ export const MstLedgerImportView: React.FC = () => {
             setFiles([]);
             setDownloadedFiles(filesDownloaded);
             
-            // Clear saved verification progress since we now verify during import
+            // Clear saved verification progress
             verificationService.clearSavedProgress();
+            
+            // If autoVerify is enabled, start the verification service to verify all chunks
+            if (autoVerify) {
+                await verificationService.startVerification({ progressReportInterval: 50 });
+            }
         } else {
             console.error('No files downloaded');
         }
