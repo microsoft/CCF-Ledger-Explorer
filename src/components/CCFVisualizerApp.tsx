@@ -326,7 +326,7 @@ export const CCFVisualizerApp: React.FC = () => {
     if (!sameTypes) {
       setSelectedTypeFilters(urlTypes);
     }
-  }, [searchParams]);
+  }, [searchParams, searchQuery, selectedTypeFilters, transactionPage]);
 
   const handleTypeFiltersChange = (nextTypes: Set<TransactionType>) => {
     setSelectedTypeFilters(nextTypes);
