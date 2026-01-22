@@ -13,9 +13,6 @@ import {
   RadioGroup,
   Radio,
   Badge,
-  MessageBar,
-  MessageBarBody,
-  Divider,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -32,20 +29,40 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
     width: '100%',
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  },
+  scrollableContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    flex: 1,
+    minHeight: 0,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    paddingRight: '4px',
+    boxSizing: 'border-box',
+    '> *': {
+      textOverflow: 'ellipsis',
+    },
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexShrink: 0,
   },
   chunkList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
-    maxHeight: '400px',
+    flex: 1,
+    minHeight: '120px',
     overflowY: 'auto',
+    overflowX: 'hidden',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: '6px',
     padding: '8px',
@@ -120,6 +137,8 @@ const useStyles = makeStyles({
     padding: '12px',
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: '6px',
+    boxSizing: 'border-box',
+    width: '100%',
   },
   summaryRow: {
     display: 'flex',
@@ -127,17 +146,34 @@ const useStyles = makeStyles({
     gap: '8px',
     marginBottom: '4px',
   },
+  stickyFooter: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    flexShrink: 0,
+    paddingTop: '12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    boxSizing: 'border-box',
+    width: '100%',
+    position: 'relative',
+    zIndex: 10,
+  },
   actions: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    gap: '12px',
+    paddingTop: '8px',
   },
   quickActions: {
     display: 'flex',
     gap: '8px',
+    flexWrap: 'wrap',
   },
   importButton: {
-    minWidth: '140px',
+    minWidth: '160px',
+    fontWeight: 600,
   },
   sequenceRange: {
     fontFamily: 'monospace',
@@ -238,8 +274,8 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
   // Group files by sequence range and detect duplicates/gaps using shared validation logic
   const { chunkGroups, gaps } = useMemo(() => {
     const analysis = analyzeLedgerSequence(files);
-    return { 
-      chunkGroups: analysis.groups, 
+    return {
+      chunkGroups: analysis.groups,
       gaps: analysis.gaps,
     };
   }, [files]);
@@ -266,7 +302,7 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     const selectedGroups = chunkGroups.filter(g => selection.checkedRanges.has(g.rangeKey));
 
     if (selectedGroups.length === 0) {
-      return { 
+      return {
         validation: { state: 'empty' as const, message: 'No chunks selected' },
         selectedOverlaps: [] as Array<{ first: ChunkFileInfo; second: ChunkFileInfo }>,
       };
@@ -369,7 +405,7 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     }
 
     setSelection({ selectedVersions: newSelectedVersions, checkedRanges: newCheckedRanges });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chunkGroups, existingRanges]);
 
   // Notify parent of selection changes
@@ -445,11 +481,11 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
 
     // Combine and analyze using shared validation logic
     const allFiles = [...existingAsFiles, ...selectedAsFiles];
-    
+
     if (allFiles.length === 0) return false;
 
     const analysis = analyzeLedgerSequence(allFiles);
-    
+
     // Can verify if: starts at 1, no gaps, no overlaps
     return analysis.startsAtOne && analysis.isContiguous && !analysis.hasOverlaps;
   }, [existingRanges, chunkGroups, selection]);
@@ -623,7 +659,7 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     }
 
     return items;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chunkGroups, gaps, selectedOverlaps]);
 
   const selectedCount = selection.checkedRanges.size;
@@ -633,150 +669,134 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
 
   return (
     <div className={styles.container}>
-      {/* Existing data info bar */}
-      {existingCount > 0 && (
-        <div className={styles.existingDataInfo}>
-          <CheckmarkCircle16Regular primaryFill={tokens.colorPaletteGreenForeground1} />
-          <Text size={200}>
-            {existingCount} chunk(s) already loaded in database
-          </Text>
-          {onClearDatabase && (
-            <Button
-              size="small"
-              appearance="subtle"
-              onClick={handleClearDatabase}
-              disabled={isClearing || isImporting}
-              style={{ marginLeft: 'auto' }}
-            >
-              {isClearing ? 'Clearing...' : 'Clear Database'}
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Header with count */}
-      <div className={styles.header}>
-        <Text weight="semibold">Available Chunks ({chunkGroups.length})</Text>
-        <div className={styles.quickActions}>
-          <Button size="small" appearance="subtle" onClick={selectContiguousFromStart}>
-            Select contiguous from start
-          </Button>
-          <Button size="small" appearance="subtle" onClick={selectAll}>
-            Select all
-          </Button>
-          <Button size="small" appearance="subtle" onClick={clearAll}>
-            Clear
-          </Button>
-        </div>
-      </div>
-
-      {/* Chunk list */}
-      <div className={styles.chunkList}>
-        {displayItems}
-      </div>
-
-      {/* Warning for overlapping files in selection */}
-      {selectedOverlaps.length > 0 && (
-        <MessageBar intent="error">
-          <MessageBarBody>
-            <strong>Overlapping files detected in selection:</strong> {selectedOverlaps.map(o => 
-              `${o.first.filename} overlaps with ${o.second.filename}`
-            ).join('; ')}. You must deselect one file from each overlapping pair.
-          </MessageBarBody>
-        </MessageBar>
-      )}
-
-      {/* Validation summary */}
-      <div className={styles.summary}>
-        <div className={styles.summaryRow}>
-          {validation.state === 'valid' && (
-            <>
-              <CheckmarkCircle16Regular primaryFill={tokens.colorPaletteGreenForeground1} />
-              <Text>{selectedCount} chunk(s) selected</Text>
-            </>
-          )}
-          {validation.state === 'warning' && (
-            <>
-              <Warning16Regular primaryFill={tokens.colorPaletteYellowForeground1} />
-              <Text>{selectedCount} chunk(s) selected</Text>
-            </>
-          )}
-          {validation.state === 'error' && (
-            <>
-              <ErrorCircle16Regular primaryFill={tokens.colorPaletteRedForeground1} />
-              <Text>{validation.message}</Text>
-            </>
-          )}
-          {validation.state === 'empty' && (
-            <>
-              <Info16Regular />
-              <Text>{validation.message}</Text>
-            </>
-          )}
-        </div>
-        {validation.state !== 'empty' && validation.state !== 'error' && (
-          <Caption1 className={styles.sequenceRange}>
-            {validation.message}
-          </Caption1>
+      {/* Scrollable content area */}
+      <div className={styles.scrollableContent}>
+        {/* Existing data info bar */}
+        {existingCount > 0 && (
+          <div className={styles.existingDataInfo}>
+            <CheckmarkCircle16Regular primaryFill={tokens.colorPaletteGreenForeground1} />
+            <Text size={200}>
+              {existingCount} chunk(s) already loaded in database
+            </Text>
+            {onClearDatabase && (
+              <Button
+                size="small"
+                appearance="subtle"
+                onClick={handleClearDatabase}
+                disabled={isClearing || isImporting}
+                style={{ marginLeft: 'auto' }}
+              >
+                {isClearing ? 'Clearing...' : 'Clear Database'}
+              </Button>
+            )}
+          </div>
         )}
-      </div>
 
-      {/* Warning for gaps */}
-      {validation.state === 'warning' && (
-        <MessageBar intent="warning">
-          <MessageBarBody>
-            Your selection has gaps. The ledger may not be fully analyzable.
-          </MessageBarBody>
-        </MessageBar>
-      )}
+        {/* Header with count */}
+        <div className={styles.header}>
+          <Text weight="semibold">Available Chunks ({chunkGroups.length})</Text>
+          <div className={styles.quickActions}>
+            <Button size="small" appearance="subtle" onClick={selectContiguousFromStart}>
+              Select contiguous
+            </Button>
+            <Button size="small" appearance="subtle" onClick={selectAll}>
+              Select all
+            </Button>
+            <Button size="small" appearance="subtle" onClick={clearAll}>
+              Clear
+            </Button>
+          </div>
+        </div>
 
-      {/* Warning for not starting from sequence 1 (considering existing data) */}
-      {validation.state !== 'empty' && validation.state !== 'error' && !canVerifyWithExisting && (
-        <MessageBar intent="warning">
-          <MessageBarBody>
-            Combined data doesn't start from sequence 1 or has gaps. Cryptographic verification of the ledger chain will not be possible without a complete contiguous sequence from the beginning.
-          </MessageBarBody>
-        </MessageBar>
-      )}
+        {/* Chunk list - this is the only vertically scrollable area */}
+        <div className={styles.chunkList}>
+          {displayItems}
+        </div>
 
-      {/* Overwrite option */}
-      {showOverwriteOption && (
-        <Checkbox
-          checked={overwriteExisting}
-          onChange={(_, data) => setOverwriteExisting(data.checked === true)}
-          label="Replace existing data (unchecked = append to existing)"
-        />
-      )}
+        {/* Validation summary - consolidated messages */}
+        <div className={styles.summary}>
+          <div className={styles.summaryRow}>
+            {validation.state === 'valid' && (
+              <>
+                <CheckmarkCircle16Regular primaryFill={tokens.colorPaletteGreenForeground1} />
+                <Text>{selectedCount} chunk(s) selected</Text>
+              </>
+            )}
+            {validation.state === 'warning' && (
+              <>
+                <Warning16Regular primaryFill={tokens.colorPaletteYellowForeground1} />
+                <Text>{selectedCount} chunk(s) selected — {validation.message}</Text>
+              </>
+            )}
+            {validation.state === 'error' && (
+              <>
+                <ErrorCircle16Regular primaryFill={tokens.colorPaletteRedForeground1} />
+                <Text>{validation.message}</Text>
+              </>
+            )}
+            {validation.state === 'empty' && (
+              <>
+                <Info16Regular />
+                <Text>{validation.message}</Text>
+              </>
+            )}
+          </div>
+          {/* Warning when verification isn't possible */}
+          {validation.state !== 'empty' && validation.state !== 'error' && !canVerifyWithExisting && (
+            <Caption1 style={{ marginTop: '4px', color: tokens.colorPaletteYellowForeground2 }}>
+              Combined data doesn't start from sequence 1 or has gaps. The ledger may not be fully analyzable.
+            </Caption1>
+          )}
+          {selectedOverlaps.length > 0 && (
+            <Caption1 style={{ marginTop: '4px', color: tokens.colorPaletteRedForeground2 }}>
+              <strong>Overlapping files:</strong> {selectedOverlaps.map(o =>
+                `${o.first.filename} ↔ ${o.second.filename}`
+              ).join('; ')}.
+            </Caption1>
+          )}
+        </div>
 
-      {/* Auto-verify option */}
-      {showAutoVerifyOption && (
-        <Checkbox
-          checked={autoVerify && canVerifyWithExisting}
-          onChange={(_, data) => setAutoVerify(data.checked === true)}
-          disabled={!canVerifyWithExisting}
-          label={
-            canVerifyWithExisting 
-              ? "Verify ledger integrity after import (runs in background)"
-              : "Verify ledger integrity after import (requires contiguous ledger starting from sequence 1)"
-          }
-        />
-      )}
+        {/* Overwrite option */}
+        {showOverwriteOption && (
+          <Checkbox
+            checked={overwriteExisting}
+            onChange={(_, data) => setOverwriteExisting(data.checked === true)}
+            label="Replace existing data (unchecked = append to existing)"
+          />
+        )}
 
-      <Divider />
+        {/* Auto-verify option */}
+        {showAutoVerifyOption && (
+          <Checkbox
+            checked={autoVerify && canVerifyWithExisting}
+            onChange={(_, data) => setAutoVerify(data.checked === true)}
+            disabled={!canVerifyWithExisting}
+            label={
+              canVerifyWithExisting
+                ? "Verify ledger integrity after import (runs in background)"
+                : "Verify ledger integrity after import (requires contiguous ledger starting from sequence 1)"
+            }
+          />
+        )}
 
-      {/* Actions */}
-      <div className={styles.actions}>
-        <div />
-        <Button
-          appearance="primary"
-          className={styles.importButton}
-          disabled={!canImport || isImporting}
-          onClick={handleImport}
-        >
-          {isImporting ? 'Importing...' : `${importButtonLabel} (${selectedCount})`}
-        </Button>
+        {/* Actions */}
+        {/* Sticky footer - always visible */}
+        <div className={styles.stickyFooter}>
+          <div className={styles.actions}>
+            <div />
+            <Button
+              appearance="primary"
+              className={styles.importButton}
+              disabled={!canImport || isImporting}
+              onClick={handleImport}
+            >
+              {isImporting ? 'Importing...' : `${importButtonLabel} (${selectedCount})`}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
+
   );
 };
 
