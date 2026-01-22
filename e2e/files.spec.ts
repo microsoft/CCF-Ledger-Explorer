@@ -43,3 +43,27 @@ test('successfully imports ledger files', async ({ page }) => {
   ]);
   await expect(page.getByText('Total: 14 transactions')).toBeVisible();
 });
+
+test('transactions pagination works and resets on type filter', async ({ page }) => {
+  await page.goto('/files');
+
+  // Import sample files (should yield > 10 transactions)
+  await page.getByRole('button', { name: 'Add Files' }).click();
+  await page.getByRole('button', { name: 'Browse Files' }).click();
+  await page.getByLabel('Upload CCF ledger files').setInputFiles([
+    path.join(testfilepath, 'test_files', 'ledger_1-14.committed'),
+    path.join(testfilepath, 'test_files', 'ledger_15-3926.committed'),
+  ]);
+
+  // Pagination should be visible since pageSize is 10
+  await expect(page.getByText(/Page\s+1\s+of\s+\d+/)).toBeVisible();
+
+  // Go to next page
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText(/Page\s+2\s+of\s+\d+/)).toBeVisible();
+
+  // Toggle a type filter in the ledger visualization; should reset back to page 1
+  // Pick a commonly present type in fixtures.
+  await page.getByRole('button', { name: /Signature\s*\(\d+\)/ }).click();
+  await expect(page.getByText(/Page\s+1\s+of\s+\d+/)).toBeVisible();
+});
