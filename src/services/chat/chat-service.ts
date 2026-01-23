@@ -228,7 +228,7 @@ Please provide a clean, human-readable summary that captures the essential infor
         
         const { done, value } = await reader.read();
         if (done) {
-          // Flush any remaining buffered bytes from the TextDecoder
+          // Flush any remaining characters from the TextDecoder
           const finalChunk = decoder.decode();
           if (finalChunk || buffer) {
             const finalResult = parseSSEChunk(finalChunk, allAnnotations, buffer);
@@ -238,7 +238,8 @@ Please provide a clean, human-readable summary that captures the essential infor
               callbacks.onTextDelta(finalResult.textDelta, fullText);
             }
             
-            if (Object.keys(finalResult.annotations).length > Object.keys(allAnnotations).length) {
+            // Always update annotations if they changed
+            if (finalResult.annotations !== allAnnotations) {
               allAnnotations = finalResult.annotations;
               callbacks.onAnnotationsUpdate(allAnnotations);
             }
@@ -265,7 +266,8 @@ Please provide a clean, human-readable summary that captures the essential infor
           callbacks.onTextDelta(result.textDelta, fullText);
         }
         
-        if (Object.keys(result.annotations).length > Object.keys(allAnnotations).length) {
+        // Always update annotations if they changed
+        if (result.annotations !== allAnnotations) {
           allAnnotations = result.annotations;
           callbacks.onAnnotationsUpdate(allAnnotations);
         }

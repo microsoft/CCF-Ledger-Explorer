@@ -124,8 +124,8 @@ export function parseSSEChunk(
   const lines = fullChunk.split('\n');
   
   // The last element might be a partial line (no trailing newline)
-  // Keep it for the next chunk unless the chunk ended with \n
-  const remainingBuffer = chunk.endsWith('\n') ? '' : lines.pop() || '';
+  // If chunk ends with \n, the last element will be empty string and can be discarded
+  const remainingBuffer = fullChunk.endsWith('\n') ? '' : lines.pop() || '';
   
   const annotations = { ...existingAnnotations };
   let textDelta = '';
