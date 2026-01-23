@@ -217,6 +217,8 @@ Please provide a clean, human-readable summary that captures the essential infor
     let fullText = '';
     let allAnnotations: Record<string, ChatAnnotation> = {};
     let responseId: string | undefined;
+    let completed = false;
+    let buffer = ''; // Buffer for incomplete SSE lines
     
     try {
       while (true) {
@@ -226,19 +228,46 @@ Please provide a clean, human-readable summary that captures the essential infor
         
         const { done, value } = await reader.read();
         if (done) {
+          // Flush any remaining characters from the TextDecoder
+          const finalChunk = decoder.decode();
+          if (finalChunk || buffer) {
+            const finalResult = parseSSEChunk(finalChunk, allAnnotations, buffer);
+            
+            if (finalResult.textDelta) {
+              fullText += finalResult.textDelta;
+              callbacks.onTextDelta(finalResult.textDelta, fullText);
+            }
+            
+            // Always update annotations if they changed
+            if (finalResult.annotations !== allAnnotations) {
+              allAnnotations = finalResult.annotations;
+              callbacks.onAnnotationsUpdate(allAnnotations);
+            }
+            
+            if (finalResult.responseId) {
+              responseId = finalResult.responseId;
+              callbacks.onResponseId(responseId);
+            }
+          }
+          
           callbacks.onComplete(fullText, allAnnotations, responseId);
+          completed = true;
           break;
         }
         
-        const chunk = decoder.decode(value);
-        const result = parseSSEChunk(chunk, allAnnotations);
+        const chunk = decoder.decode(value, { stream: true });
+        const result = parseSSEChunk(chunk, allAnnotations, buffer);
+        
+        // Store any partial line for next iteration
+        buffer = result.remainingBuffer || '';
         
         if (result.textDelta) {
           fullText += result.textDelta;
           callbacks.onTextDelta(result.textDelta, fullText);
         }
         
-        if (Object.keys(result.annotations).length > Object.keys(allAnnotations).length) {
+        // Always update annotations if they changed
+        if (result.annotations !== allAnnotations) {
           allAnnotations = result.annotations;
           callbacks.onAnnotationsUpdate(allAnnotations);
         }
@@ -251,7 +280,7 @@ Please provide a clean, human-readable summary that captures the essential infor
     } finally {
       reader.releaseLock();
       
-      if (signal?.aborted) {
+      if (signal?.aborted && !completed) {
         callbacks.onComplete(fullText || '*Response was stopped by user*', allAnnotations, responseId);
       }
     }
