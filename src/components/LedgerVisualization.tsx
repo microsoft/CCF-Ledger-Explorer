@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import {
   makeStyles,
@@ -243,17 +243,25 @@ export const LedgerVisualization: React.FC<LedgerVisualizationProps> = ({
     return groupTransactionsByView(filteredTransactions);
   }, [filteredTransactions]);
 
-  // Calculate statistics
+  // Calculate statistics - use ref to store initial counts so they don't change when filters applied
+  const initialStatsRef = useRef<Map<TransactionType, number> | null>(null);
+  
   const stats = useMemo(() => {
     const typeCounts = new Map<TransactionType, number>();
     
-    for (const tx of filteredTransactions) {
+    for (const tx of classifiedTransactions) {
       const current = typeCounts.get(tx.type) || 0;
       typeCounts.set(tx.type, current + 1);
     }
     
-    return typeCounts;
-  }, [filteredTransactions]);
+    // Capture initial stats when we first have data (no filters applied)
+    if (initialStatsRef.current === null && classifiedTransactions.length > 0 && selectedTypes.size === 0) {
+      initialStatsRef.current = new Map(typeCounts);
+    }
+    
+    // Return initial stats if available, otherwise current calculation
+    return initialStatsRef.current || typeCounts;
+  }, [classifiedTransactions, selectedTypes.size]);
 
   if (isLoading) {
     return (
@@ -263,16 +271,6 @@ export const LedgerVisualization: React.FC<LedgerVisualizationProps> = ({
             <Spinner size="tiny" />
             <span>Loading ledger visualization...</span>
           </div>
-        </MessageBar>
-      </div>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <div className={styles.container}>
-        <MessageBar intent="warning">
-          No transactions available for visualization. Upload a ledger file to get started.
         </MessageBar>
       </div>
     );
