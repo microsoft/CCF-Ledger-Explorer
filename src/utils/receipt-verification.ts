@@ -151,6 +151,6 @@ const verifyReceiptInternal = async (
   };
 };
 
-export const verifyReceipt = async (networkCertificate?: string, receipt?: ReceiptContentsOutput) => {
+export const verifyReceipt = async (networkCertificate?: string, receipt?: ReceiptContentsOutput): Promise<VerificationResult> => {
   return await verifyReceiptInternal(networkCertificate, receipt);
 };

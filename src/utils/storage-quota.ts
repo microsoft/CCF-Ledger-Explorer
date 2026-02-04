@@ -156,10 +156,19 @@ export const getStorageRecommendations = (quota: StorageQuota): string[] => {
   return recommendations;
 };
 
+interface StorageMetrics {
+  totalCapacity: string;
+  usedSpace: string;
+  availableSpace: string;
+  usagePercentage: number;
+  isLowSpace: boolean;
+  isCriticalSpace: boolean;
+}
+
 /**
  * Calculate storage efficiency metrics
  */
-export const calculateStorageMetrics = (quota: StorageQuota) => {
+export const calculateStorageMetrics = (quota: StorageQuota): StorageMetrics => {
   return {
     totalCapacity: formatBytes(quota.quota),
     usedSpace: formatBytes(quota.usage),

@@ -13,7 +13,9 @@ interface ToolsResponse {
   tools?: Tool[];
 }
 
-export const useTools = (baseUrl: string) => {
+import type { UseQueryResult } from '@tanstack/react-query';
+
+export const useTools = (baseUrl: string): UseQueryResult<ToolsResponse> => {
   return useQuery<ToolsResponse>({
     queryKey: ['tools', baseUrl],
     queryFn: async () => {

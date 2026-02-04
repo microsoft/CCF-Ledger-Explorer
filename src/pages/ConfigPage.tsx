@@ -129,8 +129,13 @@ interface AppConfig {
   defaultSystemPrompt: string;
 }
 
+interface UseConfigResult {
+  config: AppConfig;
+  setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
+}
+
 // Custom hook for managing configuration state
-export const useConfig = () => {
+export const useConfig = (): UseConfigResult => {
   const [config, setConfig] = useState<AppConfig>({
     baseUrl: localStorage.getItem('chat_base_url') || '',
     systemPrompt: localStorage.getItem('chat_system_prompt') || defaultSystemPrompt,

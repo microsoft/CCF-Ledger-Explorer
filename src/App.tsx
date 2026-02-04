@@ -36,7 +36,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+function App(): React.ReactElement {
   // Database initialization state
   const [isDbInitialized, setIsDbInitialized] = useState(false);
 
