@@ -5,29 +5,25 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-interface Tool {
-  name: string;
+interface HealthResponse {
+  status?: string;
+  configured?: boolean;
 }
 
-interface ToolsResponse {
-  tools?: Tool[];
-}
-
-export const useTools = (baseUrl: string) => {
-  return useQuery<ToolsResponse>({
-    queryKey: ['tools', baseUrl],
+export const useApiHealth = (baseUrl: string) => {
+  return useQuery<HealthResponse>({
+    queryKey: ['health', baseUrl],
     queryFn: async () => {
       if (!baseUrl) {
-        return { tools: [] };
+        return { status: 'unknown', configured: false };
       }
-      
-      const url = baseUrl.endsWith('/') ? `${baseUrl}tools` : `${baseUrl}/tools`;
-      const response = await fetch(url);
-      
+
+      const response = await fetch(baseUrl);
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch tools: ${response.statusText}`);
+        throw new Error(`Failed to fetch health: ${response.statusText}`);
       }
-      
+
       return response.json();
     },
     enabled: !!baseUrl,
