@@ -7,6 +7,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
+  mergeClasses,
   tokens,
   Button,
   Text,
@@ -189,7 +190,7 @@ export const VerificationStatusIndicator: React.FC = () => {
   if (showSuccess || progress?.status === 'completed') {
     return (
       <div className={styles.container}>
-        <div className={`${styles.card} ${styles.cardSuccess}`}>
+        <div className={mergeClasses(styles.card, styles.cardSuccess)}>
           <div className={styles.header}>
             <div className={styles.headerLeft}>
               <CheckmarkCircle16Regular primaryFill={tokens.colorPaletteGreenForeground1} />
@@ -221,7 +222,7 @@ export const VerificationStatusIndicator: React.FC = () => {
   if (error || progress?.status === 'failed') {
     return (
       <div className={styles.container}>
-        <div className={`${styles.card} ${styles.cardError}`}>
+        <div className={mergeClasses(styles.card, styles.cardError)}>
           <div className={styles.header}>
             <div className={styles.headerLeft}>
               <ErrorCircle16Regular primaryFill={tokens.colorPaletteRedForeground1} />

@@ -6,6 +6,7 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   Button,
   Text,
   Caption1,
@@ -332,7 +333,7 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({ onImportComplete
     <div className={styles.container}>
       {/* Drop Zone */}
       <div
-        className={`${styles.dropZone} ${isDragActive ? styles.dropZoneActive : ''}`}
+        className={mergeClasses(styles.dropZone, isDragActive && styles.dropZoneActive)}
         onClick={handleClick}
         onDrop={handleDropZoneDrop}
         onDragOver={handleDragOver}
@@ -353,7 +354,7 @@ export const FileUploadArea: React.FC<FileUploadAreaProps> = ({ onImportComplete
           {!isImporting ? (
             <div style={{ textAlign: 'center' }}>
               <CloudArrowUp24Regular 
-                className={`${styles.dropZoneIcon} ${isDragActive ? styles.dropZoneIconActive : ''}`}
+                className={mergeClasses(styles.dropZoneIcon, isDragActive && styles.dropZoneIconActive)}
                 style={{
                   opacity: isDragActive ? 1 : 0.7,
                   transform: isDragActive ? 'scale(1.1)' : 'scale(1)',

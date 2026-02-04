@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { makeStyles, tokens, Button, Text, Spinner, MessageBar } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, tokens, Button, Text, Spinner, MessageBar } from '@fluentui/react-components';
 import { DeleteRegular, ChatRegular } from '@fluentui/react-icons';
 import type { ConversationHistoryProps, SavedConversation } from '../types/conversation-types';
 import { 
@@ -156,7 +156,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         {conversations.map(c => (
           <div
             key={c.id}
-            className={`${styles.item} ${c.id === activeConversationId ? styles.active : ''}`}
+            className={mergeClasses(styles.item, c.id === activeConversationId && styles.active)}
             onClick={() => onConversationSelect(c)}
             onMouseEnter={() => setHoveredId(c.id)}
             onMouseLeave={() => setHoveredId(id => (id === c.id ? null : id))}
@@ -166,7 +166,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             <Button
               appearance="subtle"
               icon={<DeleteRegular />}
-              className={styles.deleteBtn + ' delete-btn'}
+              className={mergeClasses(styles.deleteBtn, 'delete-btn')}
               title="Delete"
               style={{ opacity: hoveredId === c.id ? 1 : 0 }}
               onClick={(e) => handleDelete(c.id, e)}

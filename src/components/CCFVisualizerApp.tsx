@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
+  mergeClasses,
   Body1,
   Caption1,
   Spinner,
@@ -491,7 +492,7 @@ export const CCFVisualizerApp: React.FC = () => {
                     iconBefore={<Document24Regular />}
                   >
                     <div className={styles.fileTreeItem}>
-                      <div className={`${styles.fileNameContainer} ${styles.pendingFileName}`}>
+                      <div className={mergeClasses(styles.fileNameContainer, styles.pendingFileName)}>
                         {filename}
                       </div>
                       <div className={styles.processingIndicator}>

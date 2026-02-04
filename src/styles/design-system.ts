@@ -8,7 +8,7 @@
  * Built on Fluent UI.
  */
 
-import { tokens, makeStyles, shorthands } from '@fluentui/react-components';
+import { tokens, makeStyles } from '@fluentui/react-components';
 
 // ============================================================================
 // DESIGN TOKENS - Custom extensions to Fluent UI
@@ -256,14 +256,14 @@ export const useSharedStyles = makeStyles({
   /** Subtle surface with border */
   surface: {
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
   },
   
   /** Elevated surface */
   surfaceElevated: {
     backgroundColor: tokens.colorNeutralBackground1,
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    borderRadius: tokens.borderRadiusMedium,
     boxShadow: tokens.shadow4,
   },
   
@@ -296,7 +296,7 @@ export const useSharedStyles = makeStyles({
     paddingTop: designTokens.space1,
     paddingBottom: designTokens.space1,
     backgroundColor: tokens.colorNeutralBackground4,
-    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+    borderRadius: tokens.borderRadiusSmall,
   },
   
   /** Truncated text with ellipsis */
@@ -452,8 +452,8 @@ export const useSharedStyles = makeStyles({
   
   /** Data table container */
   tableContainer: {
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
-    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
     overflow: 'hidden',
     backgroundColor: tokens.colorNeutralBackground1,
   },

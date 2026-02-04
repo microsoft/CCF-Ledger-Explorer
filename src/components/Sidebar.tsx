@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { makeStyles, tokens, Button, Text } from '@fluentui/react-components';
+import { makeStyles, mergeClasses, tokens, Button, Text } from '@fluentui/react-components';
 import { ChevronLeftRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import { SIDEBAR_WIDTH } from './sidebar-constants';
 
@@ -288,7 +288,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
       {resizable && (
         <div
-          className={`${styles.resizeHandle} ${isResizing ? styles.resizeHandleActive : ''}`}
+          className={mergeClasses(styles.resizeHandle, isResizing && styles.resizeHandleActive)}
           onMouseDown={handleResizeStart}
           title="Drag to resize"
         />

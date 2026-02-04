@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   Text,
   Caption1,
   Button,
@@ -585,7 +586,11 @@ export const ChunkSelector: React.FC<ChunkSelectorProps> = ({
     return (
       <div key={group.rangeKey}>
         <div
-          className={`${styles.chunkRow} ${isChecked ? styles.chunkRowSelected : ''} ${isAlreadyLoaded ? styles.chunkRowAlreadyLoaded : ''}`}
+          className={mergeClasses(
+            styles.chunkRow,
+            isChecked && styles.chunkRowSelected,
+            isAlreadyLoaded && styles.chunkRowAlreadyLoaded
+          )}
         >
           <Checkbox
             checked={isChecked || isAlreadyLoaded}
