@@ -39,7 +39,7 @@ import {
   useDropDatabase,
 } from '../hooks/use-ccf-data';
 import { AddFilesWizard } from '../components/AddFilesWizard';
-import { useApiHealth } from '../hooks/use-tools';
+import { useApiHealth } from '../hooks/use-api-health';
 import { 
   getLedgerDomain, 
   clearLedgerDomain 
