@@ -13,7 +13,7 @@ import { MessageBar, MessageBarBody, MessageBarActions, Button } from '@fluentui
  * Displays a prompt when a new version of the app is available,
  * allowing users to update immediately or continue using the current version.
  */
-export function PWAPrompt() {
+export function PWAPrompt(): React.ReactElement | null {
   const [showReload, setShowReload] = useState(false);
 
   const {

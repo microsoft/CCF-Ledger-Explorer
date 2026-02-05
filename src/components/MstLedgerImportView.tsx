@@ -125,10 +125,14 @@ const useStyles = makeStyles({
     },
 });
 
-export const useDownloadMstFiles = () => {
+interface DownloadMstFilesResult {
+    downloadFiles: (targetDomain?: string, options?: { shouldVerify?: boolean }) => Promise<void>;
+}
+
+export const useDownloadMstFiles = (): DownloadMstFilesResult => {
     const { handleFiles } = useFileDrop();
 
-    const downloadFiles = async (targetDomain?: string, options?: { shouldVerify?: boolean }) => {
+    const downloadFiles = async (targetDomain?: string, options?: { shouldVerify?: boolean }): Promise<void> => {
         const domainToUse = targetDomain;
         if (!domainToUse) {
             throw new Error('Domain is required to download files');

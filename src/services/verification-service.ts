@@ -45,7 +45,7 @@ export class VerificationService {
   /**
    * Set event handlers
    */
-  setEvents(events: Partial<VerificationServiceEvents>) {
+  setEvents(events: Partial<VerificationServiceEvents>): void {
     this.events = { ...this.events, ...events };
   }
 

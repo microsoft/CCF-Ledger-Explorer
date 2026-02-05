@@ -23,10 +23,17 @@ const convertWriteReceiptToReceiptContents = (receipt: WriteReceipt) => {
   };
 };
 
+interface WriteReceiptVerificationHookResult {
+  verificationResult: WriteReceiptVerificationResult | undefined;
+  isLoading: boolean;
+  error: string | null;
+  verifyWithLedgerData: () => Promise<WriteReceiptVerificationResult | undefined>;
+}
+
 export const useWriteReceiptVerification = (
   networkCertificate?: string, 
   receipt?: WriteReceipt
-) => {
+): WriteReceiptVerificationHookResult => {
   const [verificationResult, setVerificationResult] = React.useState<WriteReceiptVerificationResult>();
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -101,7 +108,7 @@ export const useWriteReceiptVerification = (
 };
 
 // Keep the original hook for backwards compatibility
-export const useVerificationHook = (networkCertificate?: string, receipt?: unknown) => {
+export const useVerificationHook = (networkCertificate?: string, receipt?: unknown): VerificationResult | undefined => {
   const [verificationResult, setVerificationResult] = React.useState<VerificationResult>();
 
   React.useEffect(() => {
