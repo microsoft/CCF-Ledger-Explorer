@@ -9,7 +9,6 @@ import {
   Button,
   Input,
   Field,
-  Textarea,
   Card,
   CardHeader,
   Text,
@@ -33,7 +32,6 @@ import {
   DocumentAdd24Regular,
   ErrorCircle16Regular,
 } from '@fluentui/react-icons';
-import defaultSystemPrompt from '../assets/defaultSystemPrompt.md?raw';
 import { 
   useAllTransactionsCount,
   useStats, 
@@ -41,7 +39,7 @@ import {
   useDropDatabase,
 } from '../hooks/use-ccf-data';
 import { AddFilesWizard } from '../components/AddFilesWizard';
-import { useTools } from '../hooks/use-tools';
+import { useApiHealth } from '../hooks/use-api-health';
 import { 
   getLedgerDomain, 
   clearLedgerDomain 
@@ -96,19 +94,6 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '16px',
   },
-  toolsList: {
-    marginTop: '8px',
-    padding: '8px',
-    color: tokens.colorStatusSuccessForeground1,
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  toolItem: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    marginRight: '12px',
-  },
   actionButtons: {
     display: 'flex',
     gap: tokens.spacingHorizontalM,
@@ -125,8 +110,6 @@ const useStyles = makeStyles({
 
 interface AppConfig {
   baseUrl: string;
-  systemPrompt: string;
-  defaultSystemPrompt: string;
 }
 
 interface UseConfigResult {
@@ -138,17 +121,10 @@ interface UseConfigResult {
 export const useConfig = (): UseConfigResult => {
   const [config, setConfig] = useState<AppConfig>({
     baseUrl: localStorage.getItem('chat_base_url') || '',
-    systemPrompt: localStorage.getItem('chat_system_prompt') || defaultSystemPrompt,
-    defaultSystemPrompt: defaultSystemPrompt,
   });
 
   useEffect(() => {
     localStorage.setItem('chat_base_url', config.baseUrl);
-    if (config.systemPrompt) {
-      localStorage.setItem('chat_system_prompt', config.systemPrompt);
-    } else {
-      localStorage.setItem('chat_system_prompt', defaultSystemPrompt);
-    }
   }, [config]);
 
   return { config, setConfig };
@@ -165,8 +141,8 @@ export const ConfigPage: React.FC = () => {
   const clearAllDataMutation = useClearAllData();
   const dropDatabaseMutation = useDropDatabase();
   
-  // Fetch tools when baseUrl changes
-  const { data: toolsData, isLoading: isLoadingTools, error: toolsError } = useTools(config.baseUrl);
+  // Fetch API health status when baseUrl changes
+  const { data: apiHealthData, isLoading: isLoadingApiHealth, error: apiHealthError } = useApiHealth(config.baseUrl);
 
   const hasData = stats && (stats.fileCount > 0 || stats.transactionCount > 0);
 
@@ -365,7 +341,7 @@ export const ConfigPage: React.FC = () => {
             />
             <div className={styles.configContent}>
               <Text size={200}>
-                Configuration for the AI chat. Set the base URL for the OpenAI API and tweak the system prompt.
+                Configuration for the AI chat. Set the base URL for the OpenAI API.
               </Text>
 
               <Field label="Base URL for chat integration">
@@ -375,78 +351,39 @@ export const ConfigPage: React.FC = () => {
                   value={config.baseUrl}
                   onChange={(_, data) => setConfig(prev => ({ ...prev, baseUrl: data.value }))} />
                 
-                {/* Tools status and list */}
+                {/* API health status */}
                 {config.baseUrl && (
                   <>
-                    {isLoadingTools && (
+                    {isLoadingApiHealth && (
                       <div className={styles.statusMessage}>
                         <Spinner size="tiny" />
-                        <Caption1>Loading available tools...</Caption1>
+                        <Caption1>Checking API health...</Caption1>
                       </div>
                     )}
                     
-                    {toolsError && (
+                    {apiHealthError && (
                       <div className={styles.statusMessage}>
                         <ErrorCircle16Regular primaryFill={tokens.colorPaletteRedForeground1} />
                         <Caption1 style={{ color: tokens.colorPaletteRedForeground1 }}>
-                          Failed to fetch tools: {toolsError.message}
+                          Failed to fetch health status: {apiHealthError.message}
                         </Caption1>
                       </div>
                     )}
                     
-                    {toolsData?.tools && toolsData.tools.length > 0 && (
-                      <div className={styles.toolsList}>
-                        <Caption1>
-                          <span>Available tools ({toolsData.tools.length}):</span>{' '}
-                          {toolsData.tools.map((tool, index) => (
-                            <span key={index} className={styles.toolItem}>
-                              {tool.name}
-                            </span>
-                          ))}
-                        </Caption1>
-                      </div>
-                    )}
-                    
-                    {toolsData?.tools && toolsData.tools.length === 0 && (
+                    {apiHealthData?.status && (
                       <div className={styles.statusMessage}>
-                        <Caption1>No tools available, check if server is running or can access MCP tools</Caption1>
+                        <Caption1>
+                          Status: {apiHealthData.status}
+                          {typeof apiHealthData.configured === 'boolean'
+                            ? ` • Configured: ${apiHealthData.configured ? 'yes' : 'no'}`
+                            : ''}
+                        </Caption1>
                       </div>
                     )}
                   </>
                 )}
               </Field>
 
-              <Field label="System prompt">
-                <Textarea
-                  resize='vertical'
-                  placeholder="Enter system prompt"
-                  rows={10}
-                  value={config.systemPrompt}
-                  onChange={(_, data) => setConfig(prev => ({ ...prev, systemPrompt: data.value }))} />
-              </Field>
-              {/* add a note if systemPrompt is different from defaultSystemPrompt */}
-              {config.systemPrompt !== config.defaultSystemPrompt && (
-                <div className={styles.actionButtons}>
-                  <Text size={200} style={{ color: tokens.colorStatusWarningForeground1 }}>
-                    Note: You have modified the system prompt from the default.
-                  </Text>
-                  <Button
-                    appearance="secondary"
-                    size="small"
-                    onClick={() => setConfig(prev => ({
-                      ...prev,
-                      systemPrompt: prev.defaultSystemPrompt,
-                    }))}
-                  >
-                    Reset to default
-                  </Button>
-                </div>
-              )}
-              {config.systemPrompt === config.defaultSystemPrompt && (
-                <Text size={200} style={{ color: tokens.colorStatusSuccessForeground1 }}>
-                  Using latest version of prompt.
-                </Text>
-              )}
             </div>
           </Card> }
         </div>
