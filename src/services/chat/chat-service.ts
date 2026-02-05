@@ -4,7 +4,7 @@
  */
 
 import type { ChatMessage, ChatAnnotation } from '../../types/chat-types';
-import { MAX_INPUT_LENGTH, MAX_OUTPUT_TOKENS, AI_TEMPERATURE } from '../../constants/chat';
+import { MAX_INPUT_LENGTH, MAX_OUTPUT_TOKENS } from '../../constants/chat';
 import { parseSSEChunk } from './sse-parser';
 
 /**
@@ -12,7 +12,6 @@ import { parseSSEChunk } from './sse-parser';
  */
 export interface ChatServiceConfig {
   baseUrl: string;
-  systemPrompt?: string;
 }
 
 /**
@@ -23,8 +22,6 @@ export interface SendMessageOptions {
   message: string;
   /** Previous messages for context (to get previousResponseId) */
   previousMessages: ChatMessage[];
-  /** System prompt/instructions */
-  systemPrompt: string;
   /** AbortSignal for cancellation */
   signal?: AbortSignal;
 }
@@ -70,12 +67,11 @@ export class ChatService {
     options: SendMessageOptions,
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const { message, previousMessages, systemPrompt, signal } = options;
+    const { message, previousMessages, signal } = options;
     
     try {
       const response = await this.makeRequest({
-        input: `## User asks:\n${message}`,
-        instructions: systemPrompt,
+        input: message,
         previousResponseId: this.getLastResponseId(previousMessages),
         stream: true,
         signal,
@@ -99,13 +95,11 @@ export class ChatService {
    */
   async sendMessage(
     input: string,
-    instructions: string,
     signal?: AbortSignal
   ): Promise<ChatResponse | null> {
     try {
       const response = await this.makeRequest({
         input,
-        instructions,
         stream: false,
         signal,
       });
@@ -141,7 +135,7 @@ export class ChatService {
       return null;
     }
     
-    const prompt = `Please analyze and summarize this JSON response from a ${actionName} action. Make it more readable and highlight the key information in a clear, structured format. Focus on the most important data points and answer the user's question: ${userQuestion}.
+    const queryToSimplifyDBOutput = `Please analyze and summarize this JSON response from a ${actionName} action. Make it more readable and highlight the key information in a clear, structured format. Focus on the most important data points and answer the user's question: ${userQuestion}.
 
 JSON to analyze:
 ${jsonString}
@@ -149,8 +143,7 @@ ${jsonString}
 Please provide a clean, human-readable summary that captures the essential information without overwhelming technical details.`;
     
     const result = await this.sendMessage(
-      prompt,
-      'You are a helpful assistant that specializes in making complex JSON data more readable and understandable. Focus on clarity, structure, and highlighting important information.'
+      queryToSimplifyDBOutput
     );
     
     return result?.text || null;
@@ -176,7 +169,6 @@ Please provide a clean, human-readable summary that captures the essential infor
    */
   private async makeRequest(options: {
     input: string;
-    instructions: string;
     previousResponseId?: string | null;
     stream: boolean;
     signal?: AbortSignal;
@@ -189,9 +181,7 @@ Please provide a clean, human-readable summary that captures the essential infor
       body: JSON.stringify({
         stream: options.stream,
         input: options.input,
-        instructions: options.instructions,
         previous_response_id: options.previousResponseId,
-        temperature: AI_TEMPERATURE,
         max_tokens: MAX_OUTPUT_TOKENS,
       }),
       signal: options.signal,
