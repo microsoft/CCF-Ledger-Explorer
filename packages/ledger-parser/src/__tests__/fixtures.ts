@@ -4,7 +4,7 @@
  */
 
 /**
- * Test fixtures for @ccf/ledger-parser
+ * Test fixtures for @microsoft/ccf-ledger-parser
  * 
  * These fixtures are copied from the e2e test files and represent real CCF ledger chunks.
  * The tests use the actual ledger files located in ../../e2e/test_files/

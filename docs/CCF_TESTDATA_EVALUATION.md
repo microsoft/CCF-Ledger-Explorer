@@ -1,6 +1,6 @@
 # CCF Testdata Evaluation for Ledger Parser Regression Tests
 
-> **Purpose:** Evaluate the test ledger files in [`CCF/tests/testdata`](https://github.com/microsoft/CCF/tree/main/tests/testdata) for use as regression tests in `@ccf/ledger-parser`.
+> **Purpose:** Evaluate the test ledger files in [`CCF/tests/testdata`](https://github.com/microsoft/CCF/tree/main/tests/testdata) for use as regression tests in `@microsoft/ccf-ledger-parser`.
 >
 > **Date:** February 2026  
 > **Status:** Proposal — pending review with CCF repo owners
@@ -9,7 +9,7 @@
 
 ## Background
 
-The `@ccf/ledger-parser` package (`packages/ledger-parser`) parses CCF `LedgerChunkV2` binary files. Its existing test suite uses only two committed ledger files from `e2e/test_files/` (originating from a single service configuration). The CCF repository ships a richer set of test data under `tests/testdata/` covering multiple service types, entry formats, and lifecycle scenarios.
+The `@microsoft/ccf-ledger-parser` package (`packages/ledger-parser`) parses CCF `LedgerChunkV2` binary files. Its existing test suite uses only two committed ledger files from `e2e/test_files/` (originating from a single service configuration). The CCF repository ships a richer set of test data under `tests/testdata/` covering multiple service types, entry formats, and lifecycle scenarios.
 
 This document summarises the results of running our parser against that data and proposes which files to adopt as regression fixtures.
 
