@@ -77,7 +77,6 @@ export const AIChat: React.FC<AIChatProps> = ({
   database,
   onChatStateChange,
   onRegisterClearChat,
-  clearChatFunction,
   onSaveConversation,
   loadedMessages,
   sidebarWidth = 0,
@@ -164,7 +163,8 @@ export const AIChat: React.FC<AIChatProps> = ({
   const handleNewConversation = () => {
     console.log('Starting new conversation');
     onSaveConversation?.(messages);
-    clearChatFunction?.();
+    clearChat();
+    setCurrentMessage('');
   };
 
   const handleStartFromTemplate = (text: string) => {
