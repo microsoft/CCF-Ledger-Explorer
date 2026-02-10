@@ -4,7 +4,7 @@
  */
 
 /**
- * AIChat Component - Main chat interface for the Sage AI assistant.
+ * AIChat Component - Main chat interface.
  *
  * This component orchestrates the chat experience using sub-components:
  * - ChatMessageList: Renders the scrollable message history
@@ -12,6 +12,8 @@
  * - ChatStarterTemplates: Shows initial prompt suggestions
  *
  * State management is handled by the useChat hook.
+ * The active provider (Sage or CCF Ledger Chat) is determined by the
+ * VITE_ENABLE_SAGE build flag.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -57,7 +59,7 @@ const useStyles = makeStyles({
     justifyContent: 'flex-start',
     alignItems: 'center',
   },
-  sageTitle: {
+  chatTitle: {
     fontSize: '48px',
     fontWeight: '600',
     color: tokens.colorNeutralForeground1,
@@ -69,7 +71,7 @@ const useStyles = makeStyles({
 /**
  * AIChat - Main chat interface component
  *
- * Renders the Sage AI chat experience with:
+ * Renders the chat experience with:
  * - Welcome screen with starter templates when no messages
  * - Message history with streaming responses
  * - Input area with send/stop functionality
@@ -108,8 +110,8 @@ export const AIChat: React.FC<AIChatProps> = ({
           setAllTransactionsCount(0);
         });
 
-      // Fetch schema only when using OpenAI provider
-      if (config.openaiApiKey) {
+      // Fetch schema only when using OpenAI provider (CCF Ledger Chat)
+      if (import.meta.env.VITE_ENABLE_SAGE !== 'true') {
         getDatabaseSchema((sql: string) => database.executeQuery(sql))
           .then((schema) => {
             setDbSchema(schema);
@@ -119,16 +121,15 @@ export const AIChat: React.FC<AIChatProps> = ({
           });
       }
     }
-  }, [database, config.openaiApiKey]);
+  }, [database]);
 
-  // Determine the active chat provider
+  // Determine the active chat provider from build flag
   const activeProvider: ChatProvider =
-    config.openaiApiKey ? 'openai' : 'sage';
+    import.meta.env.VITE_ENABLE_SAGE === 'true' ? 'sage' : 'openai';
 
-  // The chat is enabled if either provider is configured
+  // The chat is enabled if the active provider is configured
   const isChatEnabled =
-    (activeProvider === 'openai' && !!config.openaiApiKey) ||
-    (activeProvider === 'sage' && !!config.baseUrl);
+    activeProvider === 'openai' ? !!config.openaiApiKey : !!config.baseUrl;
 
   // Use the chat hook for all chat state management
   const {
@@ -246,7 +247,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         }
       >
         {/* Title - visible when no messages */}
-        {!hasMessages && <div className={styles.sageTitle}>{chatTitle}</div>}
+        {!hasMessages && <div className={styles.chatTitle}>{chatTitle}</div>}
 
         {/* Input Area */}
         <ChatInput

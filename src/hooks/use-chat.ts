@@ -199,7 +199,10 @@ export function useChat(config: UseChatConfig): UseChatReturn {
     signal: AbortSignal
   ): Promise<string> => {
     if (!chatServiceRef.current) {
-      throw new Error('Chat service is not configured. Please set up a Base URL or OpenAI API key in Configuration.');
+      const hint = provider === 'openai'
+        ? 'Please set up an OpenAI API key in Configuration.'
+        : 'Please set up a Sage Base URL in Configuration.';
+      throw new Error(`Chat service is not configured. ${hint}`);
     }
 
     // Create assistant message placeholder

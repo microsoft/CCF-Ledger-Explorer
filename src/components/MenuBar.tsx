@@ -132,9 +132,9 @@ export const MenuBar: React.FC<MenuBarProps> = ({
       <div className={styles.navigation}>
         {/* Navigation Tabs */}
           <TabList onTabSelect={(_, data) => handleTabChange(data.value as string)} >
-            { import.meta.env.VITE_DISABLE_SAGE !== 'true' && <Tab value="chat" icon={<Bot24Regular />}>
+            <Tab value="chat" icon={<Bot24Regular />}>
               Chat
-            </Tab> }
+            </Tab>
             <Tab value="files" icon={<FolderRegular />}>
               Files
             </Tab>

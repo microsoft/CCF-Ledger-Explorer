@@ -343,21 +343,21 @@ export const ConfigPage: React.FC = () => {
           </Card>
 
 
-          { import.meta.env.VITE_DISABLE_SAGE !== 'true' && <Card>
+          { import.meta.env.VITE_ENABLE_SAGE === 'true' && <Card>
             <CardHeader
               header={
                 <div className={styles.configHeader}>
                   <Settings24Regular />
-                  <Text weight="semibold">Agent configuration</Text>
+                  <Text weight="semibold">Sage configuration</Text>
                 </div>
               }
             />
             <div className={styles.configContent}>
               <Text size={200}>
-                Configuration for the AI chat. Set the base URL for the OpenAI API.
+                Configuration for the Sage AI agent. Set the base URL for the Sage backend.
               </Text>
 
-              <Field label="Base URL for chat integration">
+              <Field label="Sage Base URL">
                 <Input
                   type="url"
                   placeholder="https://sageendpoint.com/"
@@ -400,7 +400,7 @@ export const ConfigPage: React.FC = () => {
             </div>
           </Card> }
 
-          <Card>
+          { import.meta.env.VITE_ENABLE_SAGE !== 'true' && <Card>
             <CardHeader
               header={
                 <div className={styles.configHeader}>
@@ -480,14 +480,8 @@ export const ConfigPage: React.FC = () => {
                 </Dropdown>
               </Field>
 
-              {config.openaiApiKey && keyValidation?.valid && config.baseUrl && (
-                <Caption1 style={{ color: tokens.colorPaletteMarigoldForeground1 }}>
-                  ℹ️ Both Sage (base URL) and CCF Ledger Chat (OpenAI key) are configured.
-                  The chat page will use CCF Ledger Chat when ledger data is loaded.
-                </Caption1>
-              )}
             </div>
-          </Card>
+          </Card> }
         </div>
       </div>
     </div>

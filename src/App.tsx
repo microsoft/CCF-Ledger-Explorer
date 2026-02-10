@@ -93,7 +93,7 @@ function App(): React.ReactElement {
               <PageTransition>
                 <Routes>
                   <Route path="/" element={<StartPage />} />
-                  {import.meta.env.VITE_DISABLE_SAGE !== 'true' && <Route
+                  <Route
                     path="/chat"
                     element={
                       <AIPage
@@ -102,7 +102,7 @@ function App(): React.ReactElement {
                         clearChatFunction={clearChatFunction}
                       />
                     }
-                  />}
+                  />
                   <Route path="/files" element={<CCFVisualizerApp />} />
                   <Route path="/tables" element={<TablesPage />} />
                   <Route path="/tables/:tableName" element={<TablesPage />} />

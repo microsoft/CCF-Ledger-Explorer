@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 describe('AIChat component', () => {
   it('renders empty chat', () => {
     render(<QueryClientProvider client={new QueryClient()}><AIChat loadedMessages={[]}  /></QueryClientProvider>);
-    expect(screen.getByText(/Sage/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sage|CCF Ledger Chat/i)).toBeInTheDocument();
   });
   it('renders message with references and no link', () => {
     const testMsg: ChatMessage = {
