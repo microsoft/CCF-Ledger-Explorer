@@ -435,44 +435,6 @@ const StatsPage: React.FC = () => {
           </Card>
         </div>
 
-        {/* Timeline Statistics */}
-        <Text className={classes.sectionTitle}>
-          <CalendarRegular className={classes.sectionIcon} />
-          Timeline
-        </Text>
-        <div className={classes.detailsGrid}>
-          <Card className={classes.detailCard}>
-            <CardHeader
-              header={
-                <div className={classes.statCardHeader}>
-                  <ClockRegular className={classes.statIcon} />
-                  <div>
-                    <div className={classes.timelineValue}>
-                      {formatDate(stats.oldestTransaction)}
-                    </div>
-                    <div className={classes.detailLabel}>Oldest Transaction</div>
-                  </div>
-                </div>
-              }
-            />
-          </Card>
-
-          <Card className={classes.detailCard}>
-            <CardHeader
-              header={
-                <div className={classes.statCardHeader}>
-                  <ClockRegular className={classes.statIcon} />
-                  <div>
-                    <div className={classes.timelineValue}>
-                      {formatDate(stats.newestTransaction)}
-                    </div>
-                    <div className={classes.detailLabel}>Newest Transaction</div>
-                  </div>
-                </div>
-              }
-            />
-          </Card>
-        </div>
       </div>
     </div>
   );
