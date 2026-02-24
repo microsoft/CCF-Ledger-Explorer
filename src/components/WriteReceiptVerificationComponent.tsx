@@ -15,6 +15,7 @@ import {
   Badge,
   Field,
   makeStyles,
+  mergeClasses,
   tokens,
   Spinner,
   CardFooter,
@@ -489,7 +490,7 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
                 
                 {!receiptFileName ? (
                   <div
-                    className={`${classes.fileUploadCard} ${isDraggingReceipt ? classes.fileUploadCardActive : ''}`}
+                    className={mergeClasses(classes.fileUploadCard, isDraggingReceipt && classes.fileUploadCardActive)}
                     onClick={() => receiptInputRef.current?.click()}
                     onDragOver={handleReceiptDragOver}
                     onDragLeave={handleReceiptDragLeave}
@@ -555,7 +556,7 @@ export const WriteReceiptVerificationComponent: React.FC = () => {
                 
                 {!certFileName ? (
                   <div
-                    className={`${classes.fileUploadCard} ${isDraggingCert ? classes.fileUploadCardActive : ''}`}
+                    className={mergeClasses(classes.fileUploadCard, isDraggingCert && classes.fileUploadCardActive)}
                     onClick={() => certInputRef.current?.click()}
                     onDragOver={handleCertDragOver}
                     onDragLeave={handleCertDragLeave}

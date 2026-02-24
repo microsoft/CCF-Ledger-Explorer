@@ -8,6 +8,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     tokens,
     makeStyles,
+    mergeClasses,
     Text,
     Button,
     Table,
@@ -437,8 +438,8 @@ const TablesPage: React.FC = () => {
             return <ArrowSort24Regular className={classes.sortIcon} />;
         }
         return sortDirection === 'asc'
-            ? <ArrowSortUp24Regular className={`${classes.sortIcon} ${classes.sortIconActive}`} />
-            : <ArrowSortDown24Regular className={`${classes.sortIcon} ${classes.sortIconActive}`} />;
+            ? <ArrowSortUp24Regular className={mergeClasses(classes.sortIcon, classes.sortIconActive)} />
+            : <ArrowSortDown24Regular className={mergeClasses(classes.sortIcon, classes.sortIconActive)} />;
     };
 
     const getAriaSort = (column: TableLatestStateSortColumn): 'ascending' | 'descending' | 'none' => {

@@ -15,6 +15,7 @@ import {
   Badge,
   Tooltip,
   makeStyles,
+  mergeClasses,
   tokens,
   Divider,
 } from '@fluentui/react-components';
@@ -557,11 +558,12 @@ export const VerificationComponent: React.FC = () => {
             {logs.map(log => (
               <div key={log.id} className={styles.logEntry}>
                 <span className={styles.logTime}>{formatTime(log.time)}</span>
-                <span className={`${styles.logMessage} ${
-                  log.type === 'success' ? styles.logSuccess :
-                  log.type === 'error' ? styles.logError :
-                  styles.logInfo
-                }`}>
+                <span className={mergeClasses(
+                  styles.logMessage,
+                  log.type === 'success' && styles.logSuccess,
+                  log.type === 'error' && styles.logError,
+                  log.type === 'info' && styles.logInfo
+                )}>
                   {log.message}
                 </span>
               </div>

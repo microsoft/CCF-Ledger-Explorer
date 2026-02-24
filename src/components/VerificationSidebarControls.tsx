@@ -11,6 +11,7 @@ import {
   Badge,
   Tooltip,
   makeStyles,
+  mergeClasses,
   tokens,
   Divider,
 } from '@fluentui/react-components';
@@ -169,14 +170,14 @@ export const VerificationSidebarControls: React.FC<VerificationSidebarControlsPr
       {/* Status Summary */}
       <div className={styles.statusSummary}>
         <div className={styles.statusRow}>
-          <span className={`${styles.statusIcon} ${styles.verifiedIcon}`}>
+          <span className={mergeClasses(styles.statusIcon, styles.verifiedIcon)}>
             <ShieldCheckmark16Regular />
           </span>
           <Text size={200}>{stats.verified} verified</Text>
         </div>
         {stats.failed > 0 && (
           <div className={styles.statusRow}>
-            <span className={`${styles.statusIcon} ${styles.failedIcon}`}>
+            <span className={mergeClasses(styles.statusIcon, styles.failedIcon)}>
               <Warning16Regular />
             </span>
             <Text size={200}>{stats.failed} failed</Text>
@@ -184,7 +185,7 @@ export const VerificationSidebarControls: React.FC<VerificationSidebarControlsPr
         )}
         {stats.pending > 0 && (
           <div className={styles.statusRow}>
-            <span className={`${styles.statusIcon} ${styles.pendingIcon}`}>
+            <span className={mergeClasses(styles.statusIcon, styles.pendingIcon)}>
               <Clock16Regular />
             </span>
             <Text size={200}>{stats.pending} not verified</Text>

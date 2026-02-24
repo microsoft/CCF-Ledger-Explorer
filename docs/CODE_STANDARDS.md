@@ -277,12 +277,12 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('16px'),
-    ...shorthands.padding('24px'),
+    gap: '16px',
+    padding: '24px',
   },
   header: {
     backgroundColor: tokens.colorNeutralBackground2,
-    ...shorthands.borderBottom('1px', 'solid', tokens.colorNeutralStroke2),
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
 });
 
@@ -298,6 +298,8 @@ export const MyComponent: React.FC = () => {
   );
 };
 ```
+
+**Note:** The `shorthands` helper is deprecated as of Fluent UI v9.57.0. Use standard CSS shorthand properties directly instead.
 
 ## File Organization Standards
 

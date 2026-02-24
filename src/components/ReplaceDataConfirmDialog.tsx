@@ -14,6 +14,7 @@ import {
     DialogContent,
     DialogActions,
     makeStyles,
+    mergeClasses,
     tokens,
     Card,
     CardHeader,
@@ -140,7 +141,7 @@ export const ImportModeDialog: React.FC<ImportModeDialogProps> = ({
                             className={styles.radioGroup}
                         >
                             <Card 
-                                className={`${styles.optionCard} ${selectedMode === 'append' ? styles.optionCardSelected : ''}`}
+                                className={mergeClasses(styles.optionCard, selectedMode === 'append' && styles.optionCardSelected)}
                                 onClick={() => setSelectedMode('append')}
                             >
                                 <CardHeader
@@ -160,7 +161,7 @@ export const ImportModeDialog: React.FC<ImportModeDialogProps> = ({
                             </Card>
                             
                             <Card 
-                                className={`${styles.optionCard} ${selectedMode === 'replace' ? styles.optionCardSelected : ''}`}
+                                className={mergeClasses(styles.optionCard, selectedMode === 'replace' && styles.optionCardSelected)}
                                 onClick={() => setSelectedMode('replace')}
                             >
                                 <CardHeader

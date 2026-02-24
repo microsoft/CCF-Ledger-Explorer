@@ -128,6 +128,11 @@ interface UseConfigResult {
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
 }
 
+interface UseConfigResult {
+  config: AppConfig;
+  setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
+}
+
 // Custom hook for managing configuration state
 export const useConfig = (): UseConfigResult => {
   const [config, setConfig] = useState<AppConfig>({

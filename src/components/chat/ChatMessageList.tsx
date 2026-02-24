@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import { Spinner, Text } from '@fluentui/react-components';
+import { Spinner, Text, mergeClasses } from '@fluentui/react-components';
 import type { ChatMessage } from '../../types/chat-types';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useChatStyles } from './chat.styles';
@@ -72,7 +72,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
         {isLoading && (
           <div className={styles.messageContainer}>
             <div className={styles.messageContent}>
-              <div className={`${styles.messageBubble} ${styles.assistantBubble}`}>
+              <div className={mergeClasses(styles.messageBubble, styles.assistantBubble)}>
                 <div className={styles.loadingContainer}>
                   <Spinner size="tiny" />
                   <Text size={200}>AI is thinking...</Text>

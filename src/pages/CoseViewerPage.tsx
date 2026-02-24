@@ -13,6 +13,7 @@ import {
   MessageBarBody,
   Field,
   makeStyles,
+  mergeClasses,
   tokens,
   Spinner,
   Caption1,
@@ -272,7 +273,7 @@ export const CoseViewerPage: React.FC = () => {
             
             {!selectedFile ? (
               <div
-                className={`${styles.fileUploadCard} ${isDragOver ? styles.fileUploadCardHover : ''}`}
+                className={mergeClasses(styles.fileUploadCard, isDragOver && styles.fileUploadCardHover)}
                 onClick={handleUploadClick}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}

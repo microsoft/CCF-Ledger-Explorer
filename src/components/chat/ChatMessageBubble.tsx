@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Text, MessageBar } from '@fluentui/react-components';
+import { Text, MessageBar, mergeClasses } from '@fluentui/react-components';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ChatMessage } from '../../types/chat-types';
@@ -36,7 +36,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
       data-message-id={message.id}
     >
       <div className={isUser ? styles.userMessageContent : styles.messageContent}>
-        <div className={`${styles.messageBubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
+        <div className={mergeClasses(styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble)}>
           {/* Message content */}
           {isUser ? (
             <Text className={styles.messageText}>
