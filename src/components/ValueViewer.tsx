@@ -18,9 +18,11 @@ import {
   decodeCcfInternalTree,
   formatCcfInternalTreeSummary,
   extractCoseSignatureTimeFromCcfValue,
+  cborArrayToText,
   CCF_GOV_TABLES,
   CCF_INTERNAL_TABLES,
   CCF_LEGACY_TABLES,
+  SCITT_TABLES,
 } from '@microsoft/ccf-ledger-parser';
 
 import { MerkleTreeGraph } from './MerkleTreeGraph';
@@ -71,7 +73,7 @@ const useStyles = makeStyles({
   },
 });
 
-export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'auto';
+export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'cose' | 'auto';
 
 interface ValueViewerProps {
   keyName: string;
@@ -114,8 +116,9 @@ const TABLE_CONTENT_TYPE_MAP: Record<string, ContentType> = {
 
   // CCF internal merkle tree
   [CCF_INTERNAL_TABLES.TREE]: 'merkletree',
-  
-  // Add more mappings as needed
+
+  // SCITT COSE Sign1 CBOR entries
+  [SCITT_TABLES.ENTRY]: 'cose',
 };
 
 const CCF_INTERNAL_TREE_TABLE = CCF_INTERNAL_TABLES.TREE;
@@ -176,6 +179,11 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
       if (tableName.includes('config') || tableName.includes('jwt') || tableName.includes('info') || tableName.includes('service')) {
         return 'json';
       }
+    }
+
+    // Check for CBOR/COSE data (CBOR tag 18 = COSE_Sign1 starts with 0xD2)
+    if (data.length > 2 && data[0] === 0xD2) {
+      return 'cose';
     }
 
     // Try to decode as UTF-8 text for auto-detection
@@ -313,6 +321,22 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
         return { content: formatHex(data), language: 'plaintext' };
       }
       
+      case 'cose': {
+        try {
+          const decoded = cborArrayToText(data);
+          // cborArrayToText returns a JSON string; pretty-print it
+          try {
+            const parsed = JSON.parse(decoded);
+            return { content: JSON.stringify(parsed, null, 2), language: 'json' };
+          } catch {
+            // If it's not valid JSON, show as-is
+            return { content: decoded, language: 'plaintext' };
+          }
+        } catch {
+          return { content: formatHex(data), language: 'plaintext' };
+        }
+      }
+
       case 'auto': {
         const autoType = detectContentType(data, tableName);
         return formatContent(data, autoType);
@@ -483,6 +507,7 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
             size="small"
           >
             <Option value="auto">Auto Detect</Option>
+            <Option value="cose">COSE / CBOR</Option>
             <Option value="merkletree">Merkle Tree</Option>
             <Option value="javascript">JavaScript</Option>
             <Option value="json">JSON</Option>
