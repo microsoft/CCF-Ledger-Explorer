@@ -18,9 +18,11 @@ import {
   decodeCcfInternalTree,
   formatCcfInternalTreeSummary,
   extractCoseSignatureTimeFromCcfValue,
+  cborArrayToText,
   CCF_GOV_TABLES,
   CCF_INTERNAL_TABLES,
   CCF_LEGACY_TABLES,
+  SCITT_TABLES,
 } from '@microsoft/ccf-ledger-parser';
 
 import { MerkleTreeGraph } from './MerkleTreeGraph';
@@ -71,7 +73,7 @@ const useStyles = makeStyles({
   },
 });
 
-export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'auto';
+export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'cose' | 'auto';
 
 interface ValueViewerProps {
   keyName: string;
@@ -114,8 +116,10 @@ const TABLE_CONTENT_TYPE_MAP: Record<string, ContentType> = {
 
   // CCF internal merkle tree
   [CCF_INTERNAL_TABLES.TREE]: 'merkletree',
-  
-  // Add more mappings as needed
+
+  // COSE Sign1 CBOR entries
+  [SCITT_TABLES.ENTRY]: 'cose',
+  [CCF_GOV_TABLES.COSE_HISTORY]: 'cose',
 };
 
 const CCF_INTERNAL_TREE_TABLE = CCF_INTERNAL_TABLES.TREE;
@@ -176,6 +180,11 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
       if (tableName.includes('config') || tableName.includes('jwt') || tableName.includes('info') || tableName.includes('service')) {
         return 'json';
       }
+    }
+
+    // Check for CBOR/COSE data (CBOR tag 18 = COSE_Sign1 starts with 0xD2)
+    if (data.length > 2 && data[0] === 0xD2) {
+      return 'cose';
     }
 
     // Try to decode as UTF-8 text for auto-detection
@@ -313,6 +322,73 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
         return { content: formatHex(data), language: 'plaintext' };
       }
       
+      case 'cose': {
+        // The data may arrive in three forms:
+        // 1. Pre-decoded UTF-8 JSON text (from DB value_text for tables in DecodeCborTables)
+        // 2. A JSON-encoded base64 string wrapping COSE Sign1 bytes (cose_history, cose_signatures)
+        // 3. Raw CBOR bytes (from parser/TransactionViewer)
+
+        // Try UTF-8 decode first
+        let text: string | null = null;
+        try {
+          text = new TextDecoder('utf-8', { fatal: true }).decode(data);
+        } catch {
+          // Not valid UTF-8
+        }
+
+        // Path 1: Already-decoded JSON object (from DB for scitt.entry)
+        if (text) {
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              return { content: JSON.stringify(parsed, null, 2), language: 'json' };
+            }
+          } catch {
+            // Not a JSON object
+          }
+        }
+
+        // Path 2: JSON-encoded base64 string (e.g. "0oRY..." for cose_history)
+        if (text) {
+          try {
+            let b64 = text.trim();
+            // Strip JSON string wrapper if present (starts and ends with ")
+            if (b64.startsWith('"') && b64.endsWith('"')) {
+              b64 = JSON.parse(b64) as string;
+            }
+            // Try base64 decode → CBOR
+            const binaryString = atob(b64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const decoded = cborArrayToText(bytes);
+            try {
+              const parsed = JSON.parse(decoded);
+              return { content: JSON.stringify(parsed, null, 2), language: 'json' };
+            } catch {
+              return { content: decoded, language: 'plaintext' };
+            }
+          } catch {
+            // Not base64-encoded COSE
+          }
+        }
+
+        // Path 3: Raw CBOR bytes
+        try {
+          const decoded = cborArrayToText(data);
+          try {
+            const parsed = JSON.parse(decoded);
+            return { content: JSON.stringify(parsed, null, 2), language: 'json' };
+          } catch {
+            return { content: decoded, language: 'plaintext' };
+          }
+        } catch {
+          // Neither path worked — fall back to hex
+          return { content: formatHex(data), language: 'plaintext' };
+        }
+      }
+
       case 'auto': {
         const autoType = detectContentType(data, tableName);
         return formatContent(data, autoType);
@@ -483,6 +559,7 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
             size="small"
           >
             <Option value="auto">Auto Detect</Option>
+            <Option value="cose">COSE / CBOR</Option>
             <Option value="merkletree">Merkle Tree</Option>
             <Option value="javascript">JavaScript</Option>
             <Option value="json">JSON</Option>
