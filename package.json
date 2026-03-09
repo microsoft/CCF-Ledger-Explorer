@@ -28,7 +28,7 @@
     "@microsoft/ccf-database": "*",
     "@microsoft/ccf-ledger-parser": "*",
     "@fluentui/react-components": "^9.72.2",
-    "@fluentui/react-icons": "^2.0.318",
+    "@fluentui/react-icons": "^2.0.320",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.81.5",
     "@types/jsrsasign": "^10.5.15",
