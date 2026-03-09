@@ -181,11 +181,6 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
       }
     }
 
-    // Check for CBOR/COSE data (CBOR tag 18 = COSE_Sign1 starts with 0xD2)
-    if (data.length > 2 && data[0] === 0xD2) {
-      return 'cose';
-    }
-
     // Try to decode as UTF-8 text for auto-detection
     try {
       const text = new TextDecoder('utf-8', { fatal: true }).decode(data);
