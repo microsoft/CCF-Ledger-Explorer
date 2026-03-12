@@ -215,9 +215,11 @@ export class TransactionRepository extends BaseRepository {
       const valueBytes = this.toUint8Array(row.value_bytes);
       const valueText = row.value_text as string | null;
 
+      // Prefer value_text when available (contains pre-decoded JSON for CBOR tables)
+      // Fall back to value_bytes for binary data
       return {
         key: row.key_name as string,
-        value: valueBytes ?? (valueText ? new TextEncoder().encode(valueText) : new Uint8Array(0)),
+        value: valueText ? new TextEncoder().encode(valueText) : (valueBytes ?? new Uint8Array(0)),
         version: row.version as number,
         mapName: row.map_name as string,
       };
