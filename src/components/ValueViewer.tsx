@@ -21,6 +21,7 @@ import {
   CCF_GOV_TABLES,
   CCF_INTERNAL_TABLES,
   CCF_LEGACY_TABLES,
+  SCITT_TABLES,
 } from '@microsoft/ccf-ledger-parser';
 
 import { MerkleTreeGraph } from './MerkleTreeGraph';
@@ -71,7 +72,7 @@ const useStyles = makeStyles({
   },
 });
 
-export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'auto';
+export type ContentType = 'javascript' | 'json' | 'x509' | 'raw' | 'merkletree' | 'cose' | 'auto';
 
 interface ValueViewerProps {
   keyName: string;
@@ -114,8 +115,10 @@ const TABLE_CONTENT_TYPE_MAP: Record<string, ContentType> = {
 
   // CCF internal merkle tree
   [CCF_INTERNAL_TABLES.TREE]: 'merkletree',
-  
-  // Add more mappings as needed
+
+  // COSE Sign1 CBOR entries
+  [SCITT_TABLES.ENTRY]: 'cose',
+  [CCF_GOV_TABLES.COSE_HISTORY]: 'cose',
 };
 
 const CCF_INTERNAL_TREE_TABLE = CCF_INTERNAL_TABLES.TREE;
@@ -313,6 +316,19 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
         return { content: formatHex(data), language: 'plaintext' };
       }
       
+      case 'cose': {
+        // For scitt_entry and cose_history tables, the data is already decoded
+        // to JSON text in the DB (via DecodeCborTables). Just display it directly.
+        try {
+          const text = new TextDecoder('utf-8', { fatal: true }).decode(data);
+          const parsed = JSON.parse(text);
+          return { content: JSON.stringify(parsed, null, 2), language: 'json' };
+        } catch {
+          // Fallback to hex if not valid JSON
+          return { content: formatHex(data), language: 'plaintext' };
+        }
+      }
+
       case 'auto': {
         const autoType = detectContentType(data, tableName);
         return formatContent(data, autoType);
@@ -483,6 +499,7 @@ export const ValueViewer: React.FC<ValueViewerProps> = ({ keyName, value, tableN
             size="small"
           >
             <Option value="auto">Auto Detect</Option>
+            <Option value="cose">COSE / CBOR</Option>
             <Option value="merkletree">Merkle Tree</Option>
             <Option value="javascript">JavaScript</Option>
             <Option value="json">JSON</Option>
