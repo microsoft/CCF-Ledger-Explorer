@@ -4,21 +4,14 @@
  */
 
 import { useContext, createContext } from 'react';
-import type {
-  trackPageView,
-  trackEvent,
-  trackException,
-  isTelemetryEnabled,
-  setTelemetryEnabled,
-} from './telemetry-service';
 import { TelemetryEvents } from './telemetry-service';
 
 export interface TelemetryContextValue {
-  trackPageView: typeof trackPageView;
-  trackEvent: typeof trackEvent;
-  trackException: typeof trackException;
-  isTelemetryEnabled: typeof isTelemetryEnabled;
-  setTelemetryEnabled: typeof setTelemetryEnabled;
+  trackPageView: (name: string, uri?: string) => void;
+  trackEvent: (name: string, properties?: Record<string, string | number | boolean>) => void;
+  trackException: (error: Error, properties?: Record<string, string>) => void;
+  isTelemetryEnabled: () => boolean;
+  setTelemetryEnabled: (enabled: boolean) => void;
   TelemetryEvents: typeof TelemetryEvents;
 }
 

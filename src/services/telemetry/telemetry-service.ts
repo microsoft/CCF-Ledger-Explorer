@@ -76,7 +76,6 @@ export function initializeTelemetry(): boolean {
   if (!connectionString) {
     // No connection string configured - silently skip telemetry
     // This is expected for local development
-    console.debug('[Telemetry] No connection string configured, telemetry disabled');
     return false;
   }
 
@@ -102,7 +101,6 @@ export function initializeTelemetry(): boolean {
     appInsights.loadAppInsights();
     isInitialized = true;
     
-    console.debug('[Telemetry] Application Insights initialized');
     return true;
   } catch (error) {
     console.error('[Telemetry] Failed to initialize Application Insights:', error);

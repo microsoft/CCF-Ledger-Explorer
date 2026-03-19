@@ -202,9 +202,10 @@ export const ConfigPage: React.FC = () => {
   };
 
   const handleTelemetryToggle = (checked: boolean) => {
+    // Track before disabling so the event is actually sent
+    trackEvent(TelemetryEvents.TELEMETRY_TOGGLED, { enabled: checked });
     setTelemetryEnabled(checked);
     setTelemetryEnabledState(checked);
-    trackEvent(TelemetryEvents.TELEMETRY_TOGGLED, { enabled: checked });
   };
 
   const handleClearAllData = async () => {
