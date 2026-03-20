@@ -46,6 +46,7 @@ import {
   ArrowDownload24Regular,
   Info16Regular,
   Eye24Regular,
+  PlugConnectedRegular,
 } from '@fluentui/react-icons';
 import {
   useBlobAppConfig,
@@ -55,6 +56,9 @@ import {
 } from '../hooks/use-blob-app';
 import type { AuditBlob, AuditRecord, AuditResult } from '../types/blob-app-types';
 import type { TableColumnDefinition, DataGridProps } from '@fluentui/react-components';
+import { useStorageConnection } from '../hooks/use-storage-connection';
+import { StorageConnectionForm } from './storage-connection/StorageConnectionForm';
+import { GeneratedScripts } from './storage-connection/GeneratedScripts';
 
 const useStyles = makeStyles({
   configContent: {
@@ -347,6 +351,11 @@ export const BlobManagedAppExplorer: React.FC = () => {
           </a>
           .
         </Caption1>
+
+        {/* ── Connect Storage Account Section (collapsed by default) ── */}
+        <ConnectStorageSection />
+
+        <Divider />
 
         {/* ── Configuration Section ── */}
         <Accordion collapsible defaultOpenItems={validation.valid ? [] : ['config']}>
@@ -786,8 +795,68 @@ export const BlobManagedAppExplorer: React.FC = () => {
             Configure all connection settings above to enable audit operations.
           </Caption1>
         )}
+
       </div>
     </Card>
+  );
+};
+
+/**
+ * Collapsible section within BlobManagedAppExplorer that generates
+ * Azure CLI commands for connecting a storage account to the managed application.
+ * Collapsed by default to keep the primary UI clean.
+ */
+const ConnectStorageSection: React.FC = () => {
+  const {
+    params,
+    updateParam,
+    updateStorageAccountName,
+    regenerateSessionId,
+    isValid,
+    generated,
+    generate,
+    reset,
+    scripts,
+    fullScript,
+  } = useStorageConnection();
+
+  return (
+    <Accordion collapsible>
+      <AccordionItem value="connect-storage">
+        <AccordionHeader>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PlugConnectedRegular />
+            <Text weight="semibold">Connect Storage Account</Text>
+            <Badge appearance="outline" color="subtle" size="small">
+              CLI Generator
+            </Badge>
+          </div>
+        </AccordionHeader>
+        <AccordionPanel>
+          <Text size={200} block style={{ marginBottom: '12px' }}>
+            Generate Azure CLI commands to connect a new storage account to this managed
+            application. Fill in the details and copy the commands to run in your terminal
+            with <code>az login</code>.
+          </Text>
+          {!generated ? (
+            <StorageConnectionForm
+              params={params}
+              isValid={isValid}
+              onUpdateParam={updateParam}
+              onUpdateStorageAccountName={updateStorageAccountName}
+              onRegenerateSessionId={regenerateSessionId}
+              onGenerate={generate}
+            />
+          ) : (
+            <GeneratedScripts
+              scripts={scripts}
+              fullScript={fullScript}
+              onBack={reset}
+            />
+          )}
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 };
 
