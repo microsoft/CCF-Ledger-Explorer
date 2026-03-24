@@ -248,12 +248,14 @@ const useStyles = makeStyles({
   blobName: {
     fontFamily: 'monospace',
     fontSize: tokens.fontSizeBase200,
-    whiteSpace: 'nowrap' as const,
+    wordBreak: 'break-all' as const,
+    whiteSpace: 'normal' as const,
   },
   digestText: {
     fontFamily: 'monospace',
     fontSize: tokens.fontSizeBase100,
-    whiteSpace: 'nowrap' as const,
+    wordBreak: 'break-all' as const,
+    whiteSpace: 'normal' as const,
   },
   rawContent: {
     fontFamily: 'monospace',
@@ -784,23 +786,13 @@ export const BlobManagedAppExplorer: React.FC = () => {
 
               {/* Records DataGrid */}
               {selectedResult.records.length > 0 && (
-                <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
                 <DataGrid
                   items={selectedResult.records}
                   columns={recordColumns}
                   sortable
-                  resizableColumns
-                  columnSizingOptions={{
-                    status: { minWidth: 80, idealWidth: 80 },
-                    blockId: { minWidth: 60, idealWidth: 60 },
-                    blobName: { minWidth: 200, idealWidth: 500 },
-                    recalculatedDigest: { minWidth: 200, idealWidth: 550 },
-                    ledgerDigest: { minWidth: 200, idealWidth: 550 },
-                    user: { minWidth: 50, idealWidth: 50 },
-                  }}
                   defaultSortState={defaultSortState}
                   getRowId={(item: AuditRecord) => item.blockId}
-                  style={{ minWidth: '1800px' }}
+                  style={{ marginBottom: '12px' }}
                 >
                   <DataGridHeader>
                     <DataGridRow>
@@ -819,7 +811,6 @@ export const BlobManagedAppExplorer: React.FC = () => {
                     )}
                   </DataGridBody>
                 </DataGrid>
-                </div>
               )}
 
               {/* Raw content */}
