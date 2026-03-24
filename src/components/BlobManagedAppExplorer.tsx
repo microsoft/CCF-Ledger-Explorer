@@ -126,7 +126,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'a3f7b2c1d8e4f56a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
     {
       blockId: 'block_id_1',
@@ -136,7 +135,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'b4e8c3d2a9f5067b8c0d1e2f3b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
     {
       blockId: 'block_id_2',
@@ -146,7 +144,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'c5f9d4e3b0a6178c9d1e2f3c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
     {
       blockId: 'block_id_3',
@@ -156,7 +153,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'd6a0e5f4c1b7289d0e2f3d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
     {
       blockId: 'block_id_4',
@@ -166,7 +162,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'e7b1f6a5d2c8390e1f3e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
     {
       blockId: 'block_id_5',
@@ -176,7 +171,6 @@ const DEMO_AUDIT_RESULT: AuditResult = {
       ledgerDigest: 'f8c2a7b6e3d940f2a4f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1',
       isMatch: true,
       isTampered: false,
-      user: { upn: 'admin@contoso.com', oid: '123e4567-e89b-12d3-a456-426614174000' },
     },
   ],
   hasTamperedBlobs: false,
@@ -254,17 +248,14 @@ const useStyles = makeStyles({
   blobName: {
     fontFamily: 'monospace',
     fontSize: tokens.fontSizeBase200,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    wordBreak: 'break-all',
+    whiteSpace: 'normal',
   },
   digestText: {
     fontFamily: 'monospace',
     fontSize: tokens.fontSizeBase100,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    maxWidth: '200px',
+    wordBreak: 'break-all',
+    whiteSpace: 'normal',
   },
   rawContent: {
     fontFamily: 'monospace',
@@ -383,27 +374,21 @@ export const BlobManagedAppExplorer: React.FC = () => {
       columnId: 'blobName',
       renderHeaderCell: () => 'Blob(s)',
       renderCell: (item) => (
-        <Tooltip content={item.blobName} relationship="description">
-          <span className={styles.blobName}>{item.blobName || '—'}</span>
-        </Tooltip>
+        <span className={styles.blobName}>{item.blobName || '—'}</span>
       ),
     }),
     createTableColumn<AuditRecord>({
       columnId: 'recalculatedDigest',
       renderHeaderCell: () => 'Computed Hash',
       renderCell: (item) => (
-        <Tooltip content={item.recalculatedDigest} relationship="description">
-          <span className={styles.digestText}>{item.recalculatedDigest || '—'}</span>
-        </Tooltip>
+        <span className={styles.digestText}>{item.recalculatedDigest || '—'}</span>
       ),
     }),
     createTableColumn<AuditRecord>({
       columnId: 'ledgerDigest',
       renderHeaderCell: () => 'ACL Stored Hash',
       renderCell: (item) => (
-        <Tooltip content={item.ledgerDigest} relationship="description">
-          <span className={styles.digestText}>{item.ledgerDigest || '—'}</span>
-        </Tooltip>
+        <span className={styles.digestText}>{item.ledgerDigest || '—'}</span>
       ),
     }),
     createTableColumn<AuditRecord>({
