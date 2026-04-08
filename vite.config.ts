@@ -6,12 +6,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
+
+const isGitHubPages = process.env.DEPLOY_TARGET === 'github-pages'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: isGitHubPages ? '/CCF-Ledger-Explorer/' : '/',
   plugins: [
     react(),
-    VitePWA({
+    // VitePWA is disabled for GitHub Pages builds to avoid service worker scope
+    // conflicts with coi-serviceworker (which provides COOP/COEP header injection).
+    !isGitHubPages && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['**/*.md', 'src/assets/ccf.svg'],
       manifest: {
@@ -91,5 +97,13 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@sqlite.org/sqlite-wasm']
   },
+  // When VitePWA is disabled, stub its virtual module so PWAPrompt.tsx compiles.
+  ...(isGitHubPages && {
+    resolve: {
+      alias: {
+        'virtual:pwa-register/react': path.resolve(__dirname, 'src/stubs/pwa-register-react.ts'),
+      }
+    }
+  }),
   assetsInclude: ['**/*.md'],
 })
