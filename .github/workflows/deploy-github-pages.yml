@@ -33,6 +33,7 @@ jobs:
         name: Build app
         env:
           DEPLOY_TARGET: github-pages
+          GITHUB_PAGES_BASE: /${{ github.event.repository.name }}/
 
       - name: Create SPA routing fallback
         run: cp dist/index.html dist/404.html

@@ -12,7 +12,7 @@ const isGitHubPages = process.env.DEPLOY_TARGET === 'github-pages'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: isGitHubPages ? '/CCF-Ledger-Explorer/' : '/',
+  base: isGitHubPages ? (process.env.GITHUB_PAGES_BASE || '/') : '/',
   plugins: [
     react(),
     // VitePWA is disabled for GitHub Pages builds to avoid service worker scope
