@@ -127,13 +127,29 @@ const useStyles = makeStyles({
 export interface AddFilesWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Optional initial tab to select when the wizard is opened.
+   * If omitted, defaults to 'local'. Note: this only seeds the initial state;
+   * users can still switch tabs after the wizard opens.
+   */
+  initialTab?: AllowedOptions;
 }
 
 type AllowedOptions = 'azure' | 'mst' | 'local';
 
-export const AddFilesWizard: React.FC<AddFilesWizardProps> = ({ open, onOpenChange }) => {
+export const AddFilesWizard: React.FC<AddFilesWizardProps> = ({ open, onOpenChange, initialTab }) => {
   const styles = useStyles();
-  const [selectedTab, setSelectedTab] = useState<AllowedOptions>('local');
+  const [selectedTab, setSelectedTab] = useState<AllowedOptions>(initialTab ?? 'local');
+
+  // When the wizard is (re)opened, sync the selected tab from `initialTab`,
+  // falling back to the default 'local'. This avoids "stickiness" where
+  // re-opening the wizard from a generic entry point (sidebar `+` button)
+  // after picking a deep-link card keeps the previously selected tab.
+  React.useEffect(() => {
+    if (open) {
+      setSelectedTab(initialTab ?? 'local');
+    }
+  }, [open, initialTab]);
 
   // Callback to close the dialog when import completes
   const handleImportComplete = () => {

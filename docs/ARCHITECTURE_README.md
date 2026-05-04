@@ -151,6 +151,10 @@ General components:
 | **AppLayout.tsx** | CSS Grid–based shell (left sidebar + main area) |
 | **AppSidebar.tsx** | Left sidebar: navigation, chat actions, Recents list, theme toggle, collapse/expand |
 | **CCFVisualizerApp.tsx** | File list, drag-and-drop import, and per-file transaction view |
+| **onboarding/WelcomeHero.tsx** | Empty-state hero on `/files`: three import-path cards, "How it works" strip, and "Load sample ledger" CTA |
+| **onboarding/HowItWorks.tsx** | Compact 3-step explainer (Import → Verify → Explore) |
+| **onboarding/WhatIsLedgerPopover.tsx** | Inline popover that introduces CCF ledgers and the `.committed` chunk format |
+| **onboarding/LoadSampleButton.tsx** | One-click loader for the bundled sample ledger at `public/samples/ledger_1-14.committed` |
 | **TransactionViewer.tsx** | Paginated transaction browser and chunk selector |
 | **TransactionDataGrid.tsx** | Virtualized data grid for transaction records |
 | **AIChat.tsx** | AI chat orchestrator (delegates state to `useChat`) |
