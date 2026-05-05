@@ -65,8 +65,8 @@ const useStyles = makeStyles({
 });
 
 /**
- * Popover triggered from the welcome hero subtitle that explains what a
- * CCF ledger is, what `.committed` files are, and links out to upstream docs.
+ * Popover triggered from the welcome hero subtitle that explains what an
+ * Azure Ledger is, what `.committed` files are, and links out to upstream docs.
  */
 export const WhatIsLedgerPopover: React.FC = () => {
   const styles = useStyles();
@@ -78,17 +78,18 @@ export const WhatIsLedgerPopover: React.FC = () => {
           size="small"
           icon={<Info24Regular />}
           className={styles.trigger}
-          aria-label="What is a CCF ledger?"
+          aria-label="What is an Azure Ledger?"
         >
-          What is a CCF ledger?
+          What is an Azure Ledger?
         </Button>
       </PopoverTrigger>
       <PopoverSurface className={styles.surface}>
-        <Text className={styles.title}>What is a CCF ledger?</Text>
+        <Text className={styles.title}>What is an Azure Ledger?</Text>
         <Text className={styles.body}>
-          The Confidential Consortium Framework (CCF) is an open-source platform
-          for building tamper-evident, auditable services. A CCF ledger is the
-          append-only sequence of committed transactions a CCF service produces.
+          Azure Ledger is a tamper-evident, append-only record of committed
+          transactions produced by an auditable confidential service. Each
+          ledger captures the full history a service has acknowledged so that
+          third parties can verify it independently.
         </Text>
         <Text className={styles.body}>
           Ledgers are split into <strong>chunks</strong>, named like:
@@ -101,10 +102,10 @@ export const WhatIsLedgerPopover: React.FC = () => {
         </Text>
         <div className={styles.links}>
           <a className={styles.link} href="https://ccf.dev/main/architecture/ledger.html" target="_blank" rel="noreferrer">
-            CCF ledger documentation ↗
+            Azure Ledger documentation ↗
           </a>
           <a className={styles.link} href="https://ccf.dev/main/audit/receipts.html" target="_blank" rel="noreferrer">
-            CCF receipts &amp; audit ↗
+            Azure Ledger receipts &amp; audit ↗
           </a>
         </div>
       </PopoverSurface>

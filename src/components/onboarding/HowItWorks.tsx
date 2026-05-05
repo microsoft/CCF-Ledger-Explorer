@@ -71,7 +71,7 @@ const useStyles = makeStyles({
 const STEPS: Array<{ title: string; subtitle: string; icon: React.ReactNode }> = [
   {
     title: 'Import',
-    subtitle: 'Add CCF ledger chunks',
+    subtitle: 'Add Azure Ledger chunks',
     icon: <DocumentAdd24Regular />,
   },
   {

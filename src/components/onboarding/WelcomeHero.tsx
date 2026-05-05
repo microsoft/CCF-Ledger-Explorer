@@ -53,7 +53,7 @@ const PATH_CARDS: PathCard[] = [
   {
     path: 'local',
     title: 'Local files',
-    description: 'Drag & drop CCF chunks (`.committed` files) you already have on disk. Everything is parsed and indexed locally.',
+    description: 'Drag & drop Azure Ledger chunks (`.committed` files) you already have on disk. Everything is parsed and indexed locally.',
     icon: <Folder24Filled />,
     cta: 'Upload files',
   },
@@ -203,7 +203,7 @@ const useStyles = makeStyles({
  * Empty-state welcome hero shown on `/files` when the database has no data.
  *
  * Provides:
- *  - app value prop and a "What is a CCF ledger?" learn-more popover,
+ *  - app value prop and a "What is an Azure Ledger?" learn-more popover,
  *  - three import-path cards that deep-link into AddFilesWizard,
  *  - a compact "How it works" 3-step strip,
  *  - a one-click "Load sample ledger" CTA.
