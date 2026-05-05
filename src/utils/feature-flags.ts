@@ -89,17 +89,24 @@ export function isMstEnabled(): boolean {
 
 /**
  * Test-only helper. Exported with a discoverable name so consumers don't
- * accidentally use it from product code. Resets the cached value AND clears
- * the persisted state, which lets unit tests re-evaluate the flag after
- * mutating `window.location.search` or `sessionStorage`.
+ * accidentally use it from product code.
+ *
+ * NOTE: this does NOT reset the cached `mstEnabled` value — that constant
+ * is captured once at module init and is intentionally stable for the
+ * lifetime of the module (see header comment). It is impossible to clear
+ * from outside the module, so tests that need `isMstEnabled()` to return a
+ * different value must `vi.mock('../utils/feature-flags', ...)` instead.
+ *
+ * What this helper DOES do is clear the persisted `sessionStorage` entry,
+ * which lets unit tests exercising the layering helpers (`__internal.*`)
+ * start each case from a clean slate.
  *
  * @internal
  */
 export function __resetFeatureFlagCacheForTests(): void {
-  // The cached `mstEnabled` constant is captured at module init; tests that
-  // need a different value should `vi.mock(...)` this module rather than
-  // calling this helper. We still expose a way to reset persisted state so
-  // tests can exercise the URL/storage layering directly.
+  // The cached `mstEnabled` constant is captured at module init and cannot
+  // be reset; see the JSDoc above. We only clear the persisted state here
+  // so tests can exercise the URL/storage layering helpers directly.
   if (typeof window === 'undefined') return;
   try {
     window.sessionStorage.removeItem(STORAGE_KEY_MST);

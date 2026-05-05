@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   Card,
   CardFooter,
   Button,
@@ -150,6 +151,21 @@ const useStyles = makeStyles({
       border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
+  // Strip the interactive affordances when the parent gates the hero on
+  // app-wide busyness. Without this, the cards still advertised clickability
+  // (pointer cursor, hover lift, brand-stroke border) during an active import
+  // even though clicks were no-ops.
+  cardDisabled: {
+    cursor: 'default',
+    ':hover': {
+      transform: 'none',
+      boxShadow: 'none',
+      border: `1px solid ${tokens.colorNeutralStroke2}`,
+    },
+    ':focus-within': {
+      border: `1px solid ${tokens.colorNeutralStroke2}`,
+    },
+  },
   cardBody: {
     display: 'flex',
     flexDirection: 'column',
@@ -249,9 +265,10 @@ export const WelcomeHero: React.FC<WelcomeHeroProps> = ({ onPathClick, onSampleE
         {visibleCards.map(card => (
           <Card
             key={card.path}
-            className={styles.card}
+            className={mergeClasses(styles.card, disabled && styles.cardDisabled)}
             role="listitem"
             aria-label={card.title}
+            aria-disabled={disabled || undefined}
             onClick={() => handleCardClick(card.path)}
           >
             <div className={styles.cardBody}>

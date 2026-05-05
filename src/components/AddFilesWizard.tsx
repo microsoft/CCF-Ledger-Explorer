@@ -129,9 +129,16 @@ export interface AddFilesWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Optional initial tab to select when the wizard is opened.
-   * If omitted, defaults to 'local'. Note: this only seeds the initial state;
-   * users can still switch tabs after the wizard opens.
+   * Optional initial tab to select when the wizard is opened. Re-applied
+   * every time `open` transitions from `false` to `true`, so reopening the
+   * wizard from a different entry point (e.g. a different `WelcomeHero`
+   * card, or the sidebar `+` button which omits this prop) snaps back to
+   * the requested tab rather than preserving the previous in-session
+   * selection. Users can still switch tabs freely while the wizard is
+   * open; their choice is only reset on the next (re-)open.
+   *
+   * If omitted, defaults to `'local'`. If `'mst'` is requested while the
+   * MST feature gate is off, falls back to `'local'` defensively.
    */
   initialTab?: AllowedOptions;
 }
